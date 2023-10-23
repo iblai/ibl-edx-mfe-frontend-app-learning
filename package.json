@@ -4,7 +4,7 @@
   "description": "Frontend learning application.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/openedx/frontend-app-learning.git"
+    "url": "git+https://github.com/ibleducation/frontend-app-learning.git"
   },
   "browserslist": [
     "extends @edx/browserslist-config"
