@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@edx/brand": "npm:@openedx/brand-openedx@^1.2.2",
-    "@edx/frontend-component-footer": "git+https://github.com/your-repo/frontend-component-footer.git#develop",
+    "@edx/frontend-component-footer": "git+https://github.com/ibleducation/frontend-component-footer.git#develop",
     "@edx/frontend-component-header": "4.6.0",
     "@edx/frontend-lib-learning-assistant": "^1.16.0",
     "@edx/frontend-lib-special-exams": "2.23.3",
