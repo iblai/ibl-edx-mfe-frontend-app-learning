@@ -45,7 +45,7 @@ function TabPage({ intl, ...props }) {
         <PageLoading
           srMessage={intl.formatMessage(messages.loading)}
         />
-        <Footer />
+        {/* <Footer /> */}
       </>
     );
   }
@@ -80,7 +80,7 @@ function TabPage({ intl, ...props }) {
           courseTitle={title}
         />
         <LoadedTabPage {...props} />
-        <Footer />
+        {/* <Footer /> */}
       </>
     );
   }
@@ -92,7 +92,7 @@ function TabPage({ intl, ...props }) {
       <p className="text-center py-5 mx-auto" style={{ maxWidth: '30em' }}>
         {intl.formatMessage(messages.failure)}
       </p>
-      <Footer />
+      {/* <Footer /> */}
     </>
   );
 }

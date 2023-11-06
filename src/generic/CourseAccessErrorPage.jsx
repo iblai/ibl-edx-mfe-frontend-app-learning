@@ -32,7 +32,7 @@ function CourseAccessErrorPage({ intl }) {
         <PageLoading
           srMessage={intl.formatMessage(messages.loading)}
         />
-        <Footer />
+        {/* <Footer /> */}
       </>
     );
   }
@@ -51,7 +51,7 @@ function CourseAccessErrorPage({ intl }) {
           }}
         />
       </main>
-      <Footer />
+      {/* <Footer /> */}
     </>
   );
 }
