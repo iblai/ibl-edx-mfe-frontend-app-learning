@@ -41,7 +41,7 @@ function TabPage({ intl, ...props }) {
   if (courseStatus === 'loading') {
     return (
       <>
-        <Header />
+        {/* <Header /> */}
         <PageLoading
           srMessage={intl.formatMessage(messages.loading)}
         />
@@ -74,11 +74,11 @@ function TabPage({ intl, ...props }) {
           {toastHeader}
         </Toast>
         {metadataModel === 'courseHomeMeta' && (<LaunchCourseHomeTourButton srOnly />)}
-        <Header
+        {/* <Header
           courseOrg={org}
           courseNumber={number}
           courseTitle={title}
-        />
+        /> */}
         <LoadedTabPage {...props} />
         {/* <Footer /> */}
       </>
@@ -88,7 +88,7 @@ function TabPage({ intl, ...props }) {
   // courseStatus 'failed' and any other unexpected course status.
   return (
     <>
-      <Header />
+      {/* <Header /> */}
       <p className="text-center py-5 mx-auto" style={{ maxWidth: '30em' }}>
         {intl.formatMessage(messages.failure)}
       </p>
