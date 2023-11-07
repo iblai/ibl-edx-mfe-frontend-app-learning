@@ -56,6 +56,7 @@ export default function Tabs({ children, className, ...attrs }) {
       {...attrs}
       className={classNames('nav flex-nowrap', className)}
       ref={containerElementRef}
+      style={{ display: 'none' }}
     >
       {tabChildren}
     </nav>
