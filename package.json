@@ -30,8 +30,8 @@
   },
   "dependencies": {
     "@edx/brand": "npm:@edx/brand-openedx@1.1.0",
-    "@edx/frontend-component-footer": "github:ibleducation/ibl-edx-frontend-component-footer#ibl-develop",
-    "@edx/frontend-component-header": "github:ibleducation/ibl-edx-frontend-component-header#ibl-develop",
+    "@edx/frontend-component-footer": "12.2.1",
+    "@edx/frontend-component-header": "4.6.0",
     "@edx/frontend-lib-special-exams": "^2.16.1",
     "@edx/frontend-platform": "^4.2.0",
     "@edx/paragon": "^20.28.4",
