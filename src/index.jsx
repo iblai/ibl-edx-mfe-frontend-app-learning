@@ -43,6 +43,7 @@ subscribe(APP_READY, () => {
     <AppProvider store={initializeStore()}>
       <Helmet>
         <link rel="shortcut icon" href={getConfig().FAVICON_URL} type="image/x-icon" />
+        <link rel="stylesheet" href={`${getConfig().SPA_DOMAIN}/css/mfe.css`} />
       </Helmet>
       <PathFixesProvider>
         <NoticesProvider>
@@ -135,6 +136,7 @@ initialize({
         TWITTER_HASHTAG: process.env.TWITTER_HASHTAG || null,
         TWITTER_URL: process.env.TWITTER_URL || null,
         LEGACY_THEME_NAME: process.env.LEGACY_THEME_NAME || null,
+        SPA_DOMAIN: process.env.SPA_DOMAIN || null,
       }, 'LearnerAppConfig');
     },
   },
