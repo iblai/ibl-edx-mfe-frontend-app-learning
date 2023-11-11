@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { LearningHeader as Header } from '@edx/frontend-component-header';
-import Footer from '@edx/frontend-component-footer';
+import Footer from '@ibleducation/frontend-component-footer';
 import { useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Redirect } from 'react-router';
