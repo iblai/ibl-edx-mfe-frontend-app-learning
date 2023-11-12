@@ -42,7 +42,7 @@ subscribe(APP_READY, () => {
   ReactDOM.render(
     <AppProvider store={initializeStore()}>
       <Helmet>
-        <link rel="shortcut icon" href={getConfig().FAVICON_URL} type="image/x-icon" />
+        <link rel="icon" href={getConfig().FAVICON_URL} type="image/x-icon" />
         <link rel="stylesheet" href={`${getConfig().SPA_DOMAIN}/css/mfe.css`} />
       </Helmet>
       <PathFixesProvider>
