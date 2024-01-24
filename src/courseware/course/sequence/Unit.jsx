@@ -31,7 +31,7 @@ const LockPaywall = React.lazy(() => import('./lock-paywall'));
  * Changes to it should be vetted by them (security@edx.org).
  */
 const IFRAME_FEATURE_POLICY = (
-  'microphone *; camera *; midi *; geolocation *; encrypted-media *'
+  'microphone *; camera *; midi *; geolocation *; encrypted-media *; gyroscope *; picture-in-picture *; clipboard-write *'
 );
 
 /**
@@ -236,6 +236,7 @@ function Unit({
             height={iframeHeight}
             scrolling="no"
             referrerPolicy="origin"
+            sandbox="allow-modals allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox allow-downloads"
             onLoad={() => {
               // onLoad *should* only fire after everything in the iframe has finished its own load events.
               // Which means that the plugin.resize message (which calls setHasLoaded above) will have fired already
