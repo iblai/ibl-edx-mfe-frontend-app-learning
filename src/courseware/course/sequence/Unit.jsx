@@ -31,7 +31,7 @@ const LockPaywall = React.lazy(() => import('./lock-paywall'));
  * Changes to it should be vetted by them (security@edx.org).
  */
 const IFRAME_FEATURE_POLICY = (
-  'microphone *; camera *; midi *; geolocation *; encrypted-media *; gyroscope *; picture-in-picture *; clipboard-write *'
+  'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
 );
 
 /**
