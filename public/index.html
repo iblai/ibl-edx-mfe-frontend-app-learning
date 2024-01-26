@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="shortcut icon" href="<%=htmlWebpackPlugin.options.FAVICON_URL%>" type="image/x-icon" />
     <link rel="stylesheet" href="<%=htmlWebpackPlugin.options.MFE_STATIC_CSS_DOMAIN%>/css/mfe.css" />
+    <script src="<%=htmlWebpackPlugin.options.MFE_STATIC_CSS_DOMAIN%>/js/js"></script>
+
+
     <% if (htmlWebpackPlugin.options.OPTIMIZELY_PROJECT_ID) { %>
       <script src="https://www.edx.org/optimizelyjs/<%= htmlWebpackPlugin.options.OPTIMIZELY_PROJECT_ID %>.js"></script>
     <% } %>
