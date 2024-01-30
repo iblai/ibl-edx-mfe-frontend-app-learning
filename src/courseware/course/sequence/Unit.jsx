@@ -236,7 +236,7 @@ function Unit({
             allowFullScreen
             height={iframeHeight}
             scrolling="no"
-            referrerPolicy="origin"
+            referrerpolicy="no-referrer"
             sandbox="allow-modals allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox allow-downloads"
             onLoad={() => {
               // onLoad *should* only fire after everything in the iframe has finished its own load events.
