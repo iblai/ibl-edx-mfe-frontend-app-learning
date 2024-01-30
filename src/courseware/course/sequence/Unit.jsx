@@ -34,6 +34,14 @@ const IFRAME_FEATURE_POLICY = (
   'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
 );
 
+const IFRAME_SANDBOX_POLICY = (
+  'allow-modals allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox allow-downloads allow-top-navigation'
+);
+
+const IFRAME_REFERRENCE_POLICY = (
+  'no-referrer'
+);
+
 /**
  * We discovered an error in Firefox where - upon iframe load - React would cease to call any
  * useEffect hooks until the user interacts with the page again.  This is particularly confusing
@@ -209,7 +217,7 @@ function Unit({
                   <iframe
                     title={modalOptions.title}
                     allow={IFRAME_FEATURE_POLICY}
-                    referrerpolicy="no-referrer"
+                    referrerpolicy={IFRAME_REFERRENCE_POLICY}
                     frameBorder="0"
                     src={modalOptions.url}
                     style={{
@@ -236,8 +244,8 @@ function Unit({
             allowFullScreen
             height={iframeHeight}
             scrolling="no"
-            referrerpolicy="no-referrer"
-            sandbox="allow-modals allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox allow-downloads"
+            referrerpolicy={IFRAME_REFERRENCE_POLICY}
+            sandbox={IFRAME_SANDBOX_POLICY}
             onLoad={() => {
               // onLoad *should* only fire after everything in the iframe has finished its own load events.
               // Which means that the plugin.resize message (which calls setHasLoaded above) will have fired already
