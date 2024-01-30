@@ -39,7 +39,7 @@ const IFRAME_SANDBOX_POLICY = (
 );
 
 const IFRAME_REFERRENCE_POLICY = (
-  'no-referrer'
+  'origin'
 );
 
 /**
