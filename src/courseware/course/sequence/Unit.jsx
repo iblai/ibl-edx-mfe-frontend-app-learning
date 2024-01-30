@@ -209,6 +209,7 @@ function Unit({
                   <iframe
                     title={modalOptions.title}
                     allow={IFRAME_FEATURE_POLICY}
+                    referrerpolicy="no-referrer"
                     frameBorder="0"
                     src={modalOptions.url}
                     style={{
