@@ -5,14 +5,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import { sendTrackEvent } from '@edx/frontend-platform/analytics';
 import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
-import { Button, Icon } from '@edx/paragon';
-import { Compass } from '@edx/paragon/icons';
+import { Button, Icon } from '@openedx/paragon';
+import { Compass } from '@openedx/paragon/icons';
 
 import { useModel } from '../../generic/model-store';
 import { launchCourseHomeTour } from '../data/slice';
 import messages from '../messages';
 
-function LaunchCourseHomeTourButton({ intl, srOnly }) {
+const LaunchCourseHomeTourButton = ({ intl, srOnly }) => {
   const {
     courseId,
   } = useSelector(state => state.courseHome);
@@ -40,6 +40,7 @@ function LaunchCourseHomeTourButton({ intl, srOnly }) {
   };
 
   return (
+    // eslint-disable-next-line react/jsx-no-useless-fragment
     <>
       {toursEnabled && (
         <Button variant="link" size="inline" className={`p-0 ${srOnly && 'sr-only sr-only-focusable'}`} onClick={handleClick}>
@@ -55,7 +56,7 @@ function LaunchCourseHomeTourButton({ intl, srOnly }) {
       )}
     </>
   );
-}
+};
 
 LaunchCourseHomeTourButton.defaultProps = {
   srOnly: false,

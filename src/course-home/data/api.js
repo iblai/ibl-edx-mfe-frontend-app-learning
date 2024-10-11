@@ -18,7 +18,7 @@ const calculateAssignmentTypeGrades = (points, assignmentWeight, numDroppable) =
     // Calculate the average grade for the assignment and round it. This rounding is not ideal and does not accurately
     // reflect what a learner's grade would be, however, we must have parity with the current grading behavior that
     // exists in edx-platform.
-    averageGrade = (points.reduce((a, b) => a + b, 0) / points.length).toFixed(2);
+    averageGrade = (points.reduce((a, b) => a + b, 0) / points.length).toFixed(4);
     weightedGrade = averageGrade * assignmentWeight;
   }
   return { averageGrade, weightedGrade };
@@ -136,6 +136,7 @@ export function normalizeOutlineBlocks(courseId, blocks) {
           title: block.display_name,
           resumeBlock: block.resume_block,
           sequenceIds: block.children || [],
+          hideFromTOC: block.hide_from_toc,
         };
         break;
 
@@ -152,6 +153,8 @@ export function normalizeOutlineBlocks(courseId, blocks) {
           // link in the outline (even though we ignore the given url and use an internal <Link> to ourselves).
           showLink: !!block.lms_web_url,
           title: block.display_name,
+          hideFromTOC: block.hide_from_toc,
+          navigationDisabled: block.navigation_disabled,
         };
         break;
 
@@ -204,10 +207,16 @@ export async function getDatesTabData(courseId) {
     const { data } = await getAuthenticatedHttpClient().get(url);
     return camelCaseObject(data);
   } catch (error) {
-    const { httpErrorStatus } = error && error.customAttributes;
+    const httpErrorStatus = error?.response?.status;
     if (httpErrorStatus === 401) {
       // The backend sends this for unenrolled and unauthenticated learners, but we handle those cases by examining
       // courseAccess in the metadata call, so just ignore this status for now.
+      return {};
+    }
+    if (httpErrorStatus === 403) {
+      // The backend sends this if there is a course access error and the user should be redirected. The redirect
+      // info is included in the course metadata request and will be handled there as long as this call returns
+      // without an error
       return {};
     }
     throw error;
@@ -259,7 +268,7 @@ export async function getProgressTabData(courseId, targetUserId) {
 
     return camelCasedData;
   } catch (error) {
-    const { httpErrorStatus } = error && error.customAttributes;
+    const httpErrorStatus = error?.response?.status;
     if (httpErrorStatus === 404) {
       global.location.replace(`${getConfig().LMS_BASE_URL}/courses/${courseId}/progress`);
       return {};
@@ -267,6 +276,12 @@ export async function getProgressTabData(courseId, targetUserId) {
     if (httpErrorStatus === 401) {
       // The backend sends this for unenrolled and unauthenticated learners, but we handle those cases by examining
       // courseAccess in the metadata call, so just ignore this status for now.
+      return {};
+    }
+    if (httpErrorStatus === 403) {
+      // The backend sends this if there is a course access error and the user should be redirected. The redirect
+      // info is included in the course metadata request and will be handled there as long as this call returns
+      // without an error
       return {};
     }
     throw error;
@@ -322,7 +337,20 @@ export function getTimeOffsetMillis(headerDate, requestTime, responseTime) {
 export async function getOutlineTabData(courseId) {
   const url = `${getConfig().LMS_BASE_URL}/api/course_home/outline/${courseId}`;
   const requestTime = Date.now();
-  const tabData = await getAuthenticatedHttpClient().get(url);
+  let tabData;
+  try {
+    tabData = await getAuthenticatedHttpClient().get(url);
+  } catch (error) {
+    const httpErrorStatus = error?.response?.status;
+    if (httpErrorStatus === 403) {
+      // The backend sends this if there is a course access error and the user should be redirected. The redirect
+      // info is included in the course metadata request and will be handled there as long as this call returns
+      // without an error
+      return {};
+    }
+    throw error;
+  }
+
   const responseTime = Date.now();
 
   const {
@@ -349,7 +377,7 @@ export async function getOutlineTabData(courseId) {
   const timeOffsetMillis = getTimeOffsetMillis(headers && headers.date, requestTime, responseTime);
   const userHasPassingGrade = data.user_has_passing_grade;
   const verifiedMode = camelCaseObject(data.verified_mode);
-  const welcomeMessageHtml = data.welcome_message_html;
+  const welcomeMessageHtml = data.welcome_message_html || '';
 
   return {
     accessExpiration,
@@ -419,4 +447,21 @@ export async function unsubscribeFromCourseGoal(token) {
   const url = new URL(`${getConfig().LMS_BASE_URL}/api/course_home/unsubscribe_from_course_goal/${token}`);
   return getAuthenticatedHttpClient().post(url.href)
     .then(res => camelCaseObject(res));
+}
+
+export async function getCoursewareSearchEnabledFlag(courseId) {
+  const url = new URL(`${getConfig().LMS_BASE_URL}/courses/${courseId}/courseware-search/enabled/`);
+  const { data } = await getAuthenticatedHttpClient().get(url.href);
+  return { enabled: data.enabled || false };
+}
+
+export async function searchCourseContentFromAPI(courseId, searchKeyword, options = {}) {
+  const defaults = { page: 0, limit: 20 };
+  const { page, limit } = { ...defaults, ...options };
+
+  const url = new URL(`${getConfig().LMS_BASE_URL}/search/${courseId}`);
+  const formData = `search_string=${searchKeyword}&page_size=${limit}&page_index=${page}`;
+  const response = await getAuthenticatedHttpClient().post(url.href, formData);
+
+  return camelCaseObject(response);
 }

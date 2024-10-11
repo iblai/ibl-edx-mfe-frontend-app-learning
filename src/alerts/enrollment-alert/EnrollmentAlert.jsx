@@ -1,8 +1,8 @@
 import React from 'react';
 import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
 import PropTypes from 'prop-types';
-import { Alert, Button } from '@edx/paragon';
-import { Info, WarningFilled } from '@edx/paragon/icons';
+import { Alert, Button } from '@openedx/paragon';
+import { Info, WarningFilled } from '@openedx/paragon/icons';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSpinner } from '@fortawesome/free-solid-svg-icons';
@@ -11,7 +11,7 @@ import { useModel } from '../../generic/model-store';
 import messages from './messages';
 import useEnrollClickHandler from './clickHook';
 
-function EnrollmentAlert({ intl, payload }) {
+const EnrollmentAlert = ({ intl, payload }) => {
   const {
     canEnroll,
     courseId,
@@ -55,7 +55,7 @@ function EnrollmentAlert({ intl, payload }) {
       </div>
     </Alert>
   );
-}
+};
 
 EnrollmentAlert.propTypes = {
   intl: intlShape.isRequired,

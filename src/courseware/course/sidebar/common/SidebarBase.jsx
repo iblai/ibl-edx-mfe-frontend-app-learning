@@ -1,14 +1,14 @@
 import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
-import { Icon, IconButton } from '@edx/paragon';
-import { ArrowBackIos, Close } from '@edx/paragon/icons';
+import { Icon, IconButton } from '@openedx/paragon';
+import { ArrowBackIos, Close } from '@openedx/paragon/icons';
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
-import React, { useCallback, useContext } from 'react';
-import { useEventListener } from '../../../../generic/hooks';
+import { useCallback, useContext } from 'react';
+import { useEventListener } from '@src/generic/hooks';
 import messages from '../../messages';
 import SidebarContext from '../SidebarContext';
 
-function SidebarBase({
+const SidebarBase = ({
   intl,
   title,
   ariaLabel,
@@ -17,7 +17,7 @@ function SidebarBase({
   children,
   showTitleBar,
   width,
-}) {
+}) => {
   const {
     toggleSidebar,
     shouldDisplayFullScreen,
@@ -29,17 +29,22 @@ function SidebarBase({
     if (type === 'learning.events.sidebar.close') {
       toggleSidebar(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sidebarId, toggleSidebar]);
 
   useEventListener('message', receiveMessage);
 
-  return currentSidebar === sidebarId && (
+  return (
     <section
-      className={classNames('ml-0 ml-lg-4 border border-light-400 rounded-sm h-auto align-top', {
+      className={classNames('ml-0 border border-light-400 rounded-sm h-auto align-top zindex-0', {
         'bg-white m-0 border-0 fixed-top vh-100 rounded-0': shouldDisplayFullScreen,
+        'align-self-start': !shouldDisplayFullScreen,
+        'd-none': currentSidebar !== sidebarId,
       }, className)}
+      data-testid={`sidebar-${sidebarId}`}
       style={{ width: shouldDisplayFullScreen ? '100%' : width }}
       aria-label={ariaLabel}
+      id="course-sidebar"
     >
       {shouldDisplayFullScreen ? (
         <div
@@ -48,7 +53,6 @@ function SidebarBase({
           onKeyDown={() => toggleSidebar(null)}
           role="button"
           tabIndex="0"
-          alt={intl.formatMessage(messages.responsiveCloseNotificationTray)}
         >
           <Icon src={ArrowBackIos} />
           <span className="font-weight-bold m-2 d-inline-block">
@@ -58,12 +62,12 @@ function SidebarBase({
       ) : null}
       {showTitleBar && (
         <>
-          <div className="d-flex align-items-center">
-            <span className="p-2.5 d-inline-block">{title}</span>
+          <div className="d-flex align-items-center mb-2">
+            <strong className="p-2.5 d-inline-block course-sidebar-title">{title}</strong>
             {shouldDisplayFullScreen
               ? null
               : (
-                <div className="d-inline-flex mr-2 mt-1.5 ml-auto">
+                <div className="d-inline-flex mr-2 ml-auto">
                   <IconButton
                     src={Close}
                     size="sm"
@@ -75,20 +79,19 @@ function SidebarBase({
                 </div>
               )}
           </div>
-          <div className="py-1 bg-gray-100 border-top border-bottom border-light-400" />
         </>
       )}
       {children}
     </section>
   );
-}
+};
 
 SidebarBase.propTypes = {
   intl: intlShape.isRequired,
   title: PropTypes.string.isRequired,
   ariaLabel: PropTypes.string.isRequired,
   sidebarId: PropTypes.string.isRequired,
-  className: PropTypes.string,
+  className: PropTypes.string.isRequired,
   children: PropTypes.element.isRequired,
   showTitleBar: PropTypes.bool,
   width: PropTypes.string,
@@ -97,7 +100,6 @@ SidebarBase.propTypes = {
 SidebarBase.defaultProps = {
   width: '31rem',
   showTitleBar: true,
-  className: '',
 };
 
 export default injectIntl(SidebarBase);

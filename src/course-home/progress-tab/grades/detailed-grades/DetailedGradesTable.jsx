@@ -4,13 +4,13 @@ import { useSelector } from 'react-redux';
 import {
   getLocale, injectIntl, intlShape, isRtl,
 } from '@edx/frontend-platform/i18n';
-import { DataTable } from '@edx/paragon';
+import { DataTable } from '@openedx/paragon';
 
 import { useModel } from '../../../../generic/model-store';
 import messages from '../messages';
 import SubsectionTitleCell from './SubsectionTitleCell';
 
-function DetailedGradesTable({ intl }) {
+const DetailedGradesTable = ({ intl }) => {
   const {
     courseId,
   } = useSelector(state => state.courseHome);
@@ -64,7 +64,7 @@ function DetailedGradesTable({ intl }) {
       );
     })
   );
-}
+};
 
 DetailedGradesTable.propTypes = {
   intl: intlShape.isRequired,

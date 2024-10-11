@@ -3,18 +3,19 @@ import PropTypes from 'prop-types';
 
 import { getConfig } from '@edx/frontend-platform';
 
-export default function LmsHtmlFragment({
+const LmsHtmlFragment = ({
   className,
   html,
   title,
   ...rest
-}) {
+}) => {
+  const direction = document.documentElement?.getAttribute('dir') || 'ltr';
   const wholePage = `
-    <html>
+    <html dir="${direction}">
       <head>
         <base href="${getConfig().LMS_BASE_URL}" target="_parent">
         <link rel="stylesheet" href="/static/${getConfig().LEGACY_THEME_NAME ? `${getConfig().LEGACY_THEME_NAME}/` : ''}css/bootstrap/lms-main.css">
-        <link rel="stylesheet" type="text/css" href="${getConfig().BASE_URL}/src/course-home/outline-tab/LmsHtmlFragment.css">
+        <link rel="stylesheet" type="text/css" href="${getConfig().BASE_URL}/static/LmsHtmlFragment.css">
       </head>
       <body class="${className}">${html}</body>
       <script>
@@ -29,7 +30,7 @@ export default function LmsHtmlFragment({
   const iframe = useRef(null);
   function resetIframeHeight() {
     if (iframe?.current?.contentWindow?.document?.body) {
-      iframe.current.height = iframe.current.contentWindow.document.body.scrollHeight;
+      iframe.current.height = iframe.current.contentWindow.document.body.parentNode.scrollHeight;
     }
   }
 
@@ -55,7 +56,7 @@ export default function LmsHtmlFragment({
       {...rest}
     />
   );
-}
+};
 
 LmsHtmlFragment.defaultProps = {
   className: '',
@@ -66,3 +67,5 @@ LmsHtmlFragment.propTypes = {
   html: PropTypes.string.isRequired,
   title: PropTypes.string.isRequired,
 };
+
+export default LmsHtmlFragment;

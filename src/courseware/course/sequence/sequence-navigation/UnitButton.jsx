@@ -1,14 +1,15 @@
 import React, { useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { connect } from 'react-redux';
+import { connect, useSelector } from 'react-redux';
 import classNames from 'classnames';
-import { Button } from '@edx/paragon';
+import { Button } from '@openedx/paragon';
 
 import UnitIcon from './UnitIcon';
 import CompleteIcon from './CompleteIcon';
 import BookmarkFilledIcon from '../../bookmark/BookmarkFilledIcon';
 
-function UnitButton({
+const UnitButton = ({
   onClick,
   title,
   contentType,
@@ -19,10 +20,12 @@ function UnitButton({
   unitId,
   className,
   showTitle,
-}) {
+}) => {
+  const { courseId, sequenceId } = useSelector(state => state.courseware);
+
   const handleClick = useCallback(() => {
     onClick(unitId);
-  });
+  }, [onClick, unitId]);
 
   return (
     <Button
@@ -33,6 +36,8 @@ function UnitButton({
       variant="link"
       onClick={handleClick}
       title={title}
+      as={Link}
+      to={`/course/${courseId}/${sequenceId}/${unitId}`}
     >
       <UnitIcon type={contentType} />
       {showTitle && <span className="unit-title">{title}</span>}
@@ -45,7 +50,7 @@ function UnitButton({
       ) : null}
     </Button>
   );
-}
+};
 
 UnitButton.propTypes = {
   bookmarked: PropTypes.bool,

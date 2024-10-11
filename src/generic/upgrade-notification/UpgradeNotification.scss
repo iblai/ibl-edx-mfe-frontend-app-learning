@@ -22,9 +22,8 @@
 // An additional Font Awesome stylesheet is imported by Braze in
 // stage/production but not devstack.
 .upgrade-notification-ul.fa-ul {
-  padding-left: 1.25rem;
-  padding-top: 0.875rem;
-  padding-right: 1.25rem;
+  padding: 0.875rem 1.25rem 0;
+  margin: 0 0 1rem 2.5rem;
 }
 
 .upgrade-notification-text {
@@ -40,4 +39,8 @@
   border-top: 1px solid $light-400;
   padding-top: .75rem;
   padding-bottom: .75rem;
+}
+
+.font-size-18 {
+  font-size: 18px !important;
 }

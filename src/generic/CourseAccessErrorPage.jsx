@@ -1,24 +1,24 @@
 import React, { useEffect } from 'react';
 import { LearningHeader as Header } from '@edx/frontend-component-header';
-import Footer from '@edx/frontend-component-footer';
-import { useParams } from 'react-router-dom';
+import { useParams, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Redirect } from 'react-router';
 import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
+import FooterSlot from '@openedx/frontend-slot-footer';
+import { LOADED, LOADING } from '@src/constants';
 import useActiveEnterpriseAlert from '../alerts/active-enteprise-alert';
 import { AlertList } from './user-messages';
 import { fetchDiscussionTab } from '../course-home/data/thunks';
-import { LOADED, LOADING } from '../course-home/data/slice';
 import PageLoading from './PageLoading';
 import messages from '../tab-page/messages';
 
-function CourseAccessErrorPage({ intl }) {
+const CourseAccessErrorPage = ({ intl }) => {
   const { courseId } = useParams();
 
   const dispatch = useDispatch();
   const activeEnterpriseAlert = useActiveEnterpriseAlert(courseId);
   useEffect(() => {
     dispatch(fetchDiscussionTab(courseId));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
   const {
@@ -32,12 +32,12 @@ function CourseAccessErrorPage({ intl }) {
         <PageLoading
           srMessage={intl.formatMessage(messages.loading)}
         />
-        <Footer />
+        <FooterSlot />
       </>
     );
   }
   if (courseStatus === LOADED) {
-    return (<Redirect to={`/redirect/home/${courseId}`} />);
+    return <Navigate to={`/redirect/home/${courseId}`} replace />;
   }
   return (
     <>
@@ -51,10 +51,10 @@ function CourseAccessErrorPage({ intl }) {
           }}
         />
       </main>
-      <Footer />
+      <FooterSlot />
     </>
   );
-}
+};
 
 CourseAccessErrorPage.propTypes = {
   intl: intlShape.isRequired,

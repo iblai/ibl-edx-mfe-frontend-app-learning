@@ -4,15 +4,15 @@ import { useSelector } from 'react-redux';
 import { sendTrackEvent } from '@edx/frontend-platform/analytics';
 import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 import { FormattedMessage, injectIntl, intlShape } from '@edx/frontend-platform/i18n';
-import { Blocked } from '@edx/paragon/icons';
-import { Icon, Hyperlink } from '@edx/paragon';
+import { Blocked } from '@openedx/paragon/icons';
+import { Icon, Hyperlink } from '@openedx/paragon';
 import { useModel } from '../../../../generic/model-store';
 
 import DetailedGradesTable from './DetailedGradesTable';
 
 import messages from '../messages';
 
-function DetailedGrades({ intl }) {
+const DetailedGrades = ({ intl }) => {
   const { administrator } = getAuthenticatedUser();
   const {
     courseId,
@@ -79,7 +79,7 @@ function DetailedGrades({ intl }) {
       )}
     </section>
   );
-}
+};
 
 DetailedGrades.propTypes = {
   intl: intlShape.isRequired,

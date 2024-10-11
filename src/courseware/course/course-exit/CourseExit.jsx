@@ -2,9 +2,9 @@ import React, { useEffect } from 'react';
 
 import { getConfig } from '@edx/frontend-platform';
 import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
-import { Button } from '@edx/paragon';
+import { Button } from '@openedx/paragon';
 import { useSelector } from 'react-redux';
-import { Redirect } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 
 import CourseCelebration from './CourseCelebration';
 import CourseInProgress from './CourseInProgress';
@@ -15,7 +15,7 @@ import { unsubscribeFromGoalReminders } from './data/thunks';
 
 import { useModel } from '../../../generic/model-store';
 
-function CourseExit({ intl }) {
+const CourseExit = ({ intl }) => {
   const { courseId } = useSelector(state => state.courseware);
   const {
     certificateData,
@@ -58,7 +58,7 @@ function CourseExit({ intl }) {
   } else if (mode === COURSE_EXIT_MODES.celebration) {
     body = (<CourseCelebration />);
   } else {
-    return (<Redirect to={`/course/${courseId}`} />);
+    return (<Navigate to={`/course/${courseId}`} replace />);
   }
 
   return (
@@ -74,7 +74,7 @@ function CourseExit({ intl }) {
       {body}
     </>
   );
-}
+};
 
 CourseExit.propTypes = {
   intl: intlShape.isRequired,

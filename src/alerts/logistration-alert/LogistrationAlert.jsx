@@ -2,12 +2,12 @@ import React from 'react';
 import { getConfig } from '@edx/frontend-platform';
 import { injectIntl, intlShape, FormattedMessage } from '@edx/frontend-platform/i18n';
 import { getLoginRedirectUrl } from '@edx/frontend-platform/auth';
-import { Alert, Hyperlink } from '@edx/paragon';
-import { WarningFilled } from '@edx/paragon/icons';
+import { Alert, Hyperlink } from '@openedx/paragon';
+import { WarningFilled } from '@openedx/paragon/icons';
 
 import genericMessages from '../../generic/messages';
 
-function LogistrationAlert({ intl }) {
+const LogistrationAlert = ({ intl }) => {
   const signIn = (
     <Hyperlink
       style={{ textDecoration: 'underline' }}
@@ -41,7 +41,7 @@ function LogistrationAlert({ intl }) {
       />
     </Alert>
   );
-}
+};
 
 LogistrationAlert.propTypes = {
   intl: intlShape.isRequired,

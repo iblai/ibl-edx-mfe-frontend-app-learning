@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 
 import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
-import { OverlayTrigger, Popover } from '@edx/paragon';
+import { OverlayTrigger, Popover } from '@openedx/paragon';
 
 import messages from './messages';
 
-function CompleteDonutSegment({ completePercentage, intl, lockedPercentage }) {
+const CompleteDonutSegment = ({ completePercentage, intl, lockedPercentage }) => {
+  const [showCompletePopover, setShowCompletePopover] = useState(false);
+
   if (!completePercentage) {
     return null;
   }
-
-  const [showCompletePopover, setShowCompletePopover] = useState(false);
 
   const completeSegmentOffset = (3.6 * completePercentage) / 8;
   let completeTooltipDegree = completePercentage < 100 ? -completeSegmentOffset : 0;
@@ -33,7 +33,7 @@ function CompleteDonutSegment({ completePercentage, intl, lockedPercentage }) {
         show={showCompletePopover}
         placement="top"
         overlay={(
-          <Popover aria-hidden="true">
+          <Popover id="complete-content-tooltip-popover" aria-hidden="true">
             <Popover.Content>
               {intl.formatMessage(messages.completeContentTooltip)}
             </Popover.Content>
@@ -78,7 +78,7 @@ function CompleteDonutSegment({ completePercentage, intl, lockedPercentage }) {
       )}
     </g>
   );
-}
+};
 
 CompleteDonutSegment.propTypes = {
   completePercentage: PropTypes.number.isRequired,

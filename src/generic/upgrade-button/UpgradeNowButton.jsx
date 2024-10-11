@@ -1,11 +1,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { FormattedMessage, injectIntl, intlShape } from '@edx/frontend-platform/i18n';
-import { Button } from '@edx/paragon';
+import { Button } from '@openedx/paragon';
 
 import FormattedPricing from './FormattedPricing';
 
-function UpgradeNowButton(props) {
+const UpgradeNowButton = (props) => {
   const {
     intl,
     offer,
@@ -39,7 +39,7 @@ function UpgradeNowButton(props) {
       />
     </Button>
   );
-}
+};
 
 UpgradeNowButton.defaultProps = {
   offer: null,

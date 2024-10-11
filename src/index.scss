@@ -1,9 +1,11 @@
 @import "~@edx/brand/paragon/fonts";
 @import "~@edx/brand/paragon/variables";
-@import "~@edx/paragon/scss/core/core";
+@import "~@openedx/paragon/scss/core/core";
 @import "~@edx/brand/paragon/overrides";
 
 @import "~@edx/frontend-component-footer/dist/footer";
+@import "~@edx/frontend-component-header/dist/index";
+
 
 #root {
   display: flex;
@@ -36,24 +38,6 @@
   }
 }
 
-.course-tabs-navigation {
-  border-bottom: solid 1px #eaeaea;
-
-  .nav a,
-  .nav button {
-    &:hover {
-      background-color: $light-400;
-    }
-  }
-
-  .nav a {
-    &:not(.active):hover {
-      background-color: $light-400;
-      border-bottom: none;
-    }
-  }
-}
-
 .nav-underline-tabs {
   margin: 0 0 -1px;
 
@@ -77,19 +61,17 @@
   }
 }
 
+.pgn__menu-select .pgn__menu-select-popup {
+  position: static;
+}
+
 .sequence-container {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
   margin-bottom: 4rem;
-
-  // On mobile, the unit container will be responsible
-  // for container padding.
-  @media (min-width: map-get($grid-breakpoints, "sm")) {
-    width: 100%;
-    margin-right: auto;
-    margin-left: auto;
-  }
+  margin-right: auto;
+  margin-left: auto;
 }
 
 .sequence {
@@ -99,11 +81,31 @@
   }
 }
 
+.sequence-navigation-container {
+  display: flex;
+  align-items: flex-start;
+}
+
+.notification-btn {
+  @media (max-width: -1 + map-get($grid-breakpoints, "sm")) {
+    height: 3rem;
+  }
+}
+
 .sequence-navigation {
   display: flex;
+  flex-grow: 1;
+
+  @media (max-width: -1 + map-get($grid-breakpoints, "sm")) {
+    max-width: 100%;
+  }
 
   @media (min-width: map-get($grid-breakpoints, "sm")) {
     margin: -1px -1px 0;
+  }
+
+  @media (max-width: -1 + map-get($grid-breakpoints, "sm")) {
+    width: 100% !important;
   }
 
   .btn {
@@ -168,10 +170,23 @@
   }
 
   .sequence-navigation-tabs {
+    overflow: auto;
     .btn {
       flex-basis: 100%;
-      min-width: 2rem;
+      min-width: 3rem;
     }
+  }
+
+  .navigation-tab-width-xl {
+    max-width: 47rem;
+  }
+
+  .navigation-tab-width-large {
+    max-width: 28rem;
+  }
+
+  .navigation-tab-width-medium{
+    max-width: 23.5rem;
   }
 
   .sequence-navigation-dropdown {
@@ -268,10 +283,16 @@
 }
 
 .unit-container {
-  padding: 0 $grid-gutter-width 2rem;
+  padding-top: 0;
+  padding-bottom: 2rem;
   max-width: 1024px;
   margin-left: auto;
   margin-right: auto;
+
+  @media (min-width: map-get($grid-breakpoints, "sm")) {
+    padding-left: $grid-gutter-width;
+    padding-right: $grid-gutter-width;
+  }
 
   @media (min-width: 830px) {
     padding-left: 40px;
@@ -280,7 +301,18 @@
 }
 
 .unit-iframe-wrapper {
-  margin: 0 -20px 2rem;
+  margin-top: 0;
+
+  // Some XBlocks (such as xblock-drag-and-drop-v2) rely on the viewport width
+  // to determine their layout on mobile. This is problematic because the
+  // viewport width may not be the same as the width of the iframe. To fix this,
+  // here we compensate for the padding of the parent div with "container-xl"
+  // class to ensure that the viewport width is the same as the width of the
+  // iframe.
+  margin-left: -$grid-gutter-width * .5;
+  margin-right: -$grid-gutter-width * .5;
+
+  margin-bottom: 2rem;
 
   @media (min-width: 830px) {
     margin: 0 -40px 2rem;
@@ -299,9 +331,13 @@
   max-width: 640px;
   margin: 0 auto;
 
+  @media (max-width: -1 + map-get($grid-breakpoints, "sm")) {
+    flex-direction: column;
+    gap: $spacer;
+  }
+
   .previous-button,
   .next-button {
-    white-space: nowrap;
     border-radius: 4px;
 
     &:focus:before {
@@ -311,10 +347,31 @@
 
   .next-button {
     flex-basis: 75%;
+
+     @media (max-width: -1 + map-get($grid-breakpoints, "sm")) {
+       flex-basis: 100%;
+     }
   }
 
   .previous-button {
     flex-basis: 25%;
+
+     @media (max-width: -1 + map-get($grid-breakpoints, "sm")) {
+       flex-basis: 100%;
+     }
+  }
+}
+
+.top-unit-navigation {
+  max-width: 100%;
+  justify-content: flex-end;
+
+  .next-button,
+  .previous-button {
+    @media (min-width: map-get($grid-breakpoints, "md")) {
+      flex-basis: auto;
+      min-width: 8rem;
+    }
   }
 }
 
@@ -361,8 +418,35 @@
   box-shadow: 0 .0625rem .125rem rgba(0, 0, 0, .2) !important;
 }
 
+.icon-hover {
+  &:hover {
+    color: $primary-500 !important;
+    background-color: $light-300 !important;
+  }
+}
+
+.sticky-top {
+  position: sticky;
+  top: 0;
+}
+
+.min-height-700 {
+  min-height: 700px;
+}
+
+.size-4r {
+  width: 4rem !important;
+  height: 4rem !important;
+}
+
+.size-56px {
+  width: 56px !important;
+  height: 56px !important;
+}
+
 // Import component-specific sass files
 @import "courseware/course/celebration/CelebrationModal.scss";
+@import "courseware/course/sidebar/sidebars/discussions/Discussions.scss";
 @import "courseware/course/sidebar/sidebars/notifications/NotificationIcon.scss";
 @import "courseware/course/sequence/lock-paywall/LockPaywall.scss";
 @import "shared/streak-celebration/StreakCelebrationModal.scss";
@@ -372,11 +456,12 @@
 @import "generic/upgrade-notification/UpgradeNotification.scss";
 @import "generic/upsell-bullets/UpsellBullets.scss";
 @import "course-home/outline-tab/widgets/ProctoringInfoPanel.scss";
-@import "src/course-home/outline-tab/widgets/FlagButton.scss";
+@import "course-home/outline-tab/widgets/FlagButton.scss";
 @import "course-home/progress-tab/course-completion/CompletionDonutChart.scss";
 @import "course-home/progress-tab/grades/course-grade/GradeBar.scss";
 @import "courseware/course/course-exit/CourseRecommendations";
 @import "product-tours/newUserCourseHomeTour/NewUserCourseHomeTourModal.scss";
-
-/** [MM-P2P] Experiment */
-@import "experiments/mm-p2p/index.scss";
+@import "course-home/courseware-search/courseware-search.scss";
+@import "course-tabs/course-tabs-navigation.scss";
+@import "courseware/course/sidebar/common/SidebarBase.scss";
+@import "courseware/course/sidebar/sidebars/course-outline/CourseOutlineTray.scss";

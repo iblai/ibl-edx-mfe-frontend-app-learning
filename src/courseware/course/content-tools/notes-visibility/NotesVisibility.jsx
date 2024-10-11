@@ -25,7 +25,7 @@ class NotesVisibility extends Component {
   }
 
   handleClick = () => {
-    const data = { visibility: this.state.visible };
+    const data = { visibility: !this.state.visible };
     getAuthenticatedHttpClient().put(
       this.visibilityUrl,
       data,
@@ -33,7 +33,7 @@ class NotesVisibility extends Component {
       this.setState((state) => ({ visible: !state.visible }));
       toggleNotes();
     });
-  }
+  };
 
   render() {
     const message = this.state.visible ? 'notes.button.hide' : 'notes.button.show';

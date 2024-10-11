@@ -2,7 +2,7 @@ import React, {
   Component,
 } from 'react';
 import PropTypes from 'prop-types';
-import { Dropdown } from '@edx/paragon';
+import { Dropdown } from '@openedx/paragon';
 
 class MasqueradeWidgetOption extends Component {
   onClick(event) {
@@ -16,6 +16,7 @@ class MasqueradeWidgetOption extends Component {
     event.target.parentNode.parentNode.click();
     const {
       groupId,
+      groupName,
       role,
       userName,
       userPartitionId,
@@ -23,7 +24,7 @@ class MasqueradeWidgetOption extends Component {
     } = this.props;
     const payload = {};
     if (userName || userName === '') {
-      userNameInputToggle(true);
+      userNameInputToggle(true, groupId, groupName, role, userName, userPartitionId);
       return false;
     }
     if (role) {

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 
 import { getConfig } from '@edx/frontend-platform';
 import { FormattedMessage, injectIntl, intlShape } from '@edx/frontend-platform/i18n';
-import { Alert, Button, Hyperlink } from '@edx/paragon';
+import { Alert, Button, Hyperlink } from '@openedx/paragon';
 import certImage from '../../../generic/assets/edX_certificate.png';
 import messages from './messages';
 
@@ -19,13 +19,13 @@ import messages from './messages';
 
 const programTypes = ['microbachelors', 'micromasters', 'professional-certificate', 'xseries'];
 
-function ProgramCompletion({
+const ProgramCompletion = ({
   intl,
   progress,
   title,
   type,
   url,
-}) {
+}) => {
   if (!programTypes.includes(type) || progress.notStarted !== 0 || progress.inProgress !== 0) {
     return null;
   }
@@ -95,7 +95,7 @@ function ProgramCompletion({
       </div>
     </Alert>
   );
-}
+};
 
 ProgramCompletion.propTypes = {
   intl: intlShape.isRequired,

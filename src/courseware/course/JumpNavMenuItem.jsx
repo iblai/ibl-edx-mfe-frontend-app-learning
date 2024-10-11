@@ -1,21 +1,24 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { history } from '@edx/frontend-platform';
-import { MenuItem } from '@edx/paragon';
+import { Dropdown } from '@openedx/paragon';
 
 import {
   sendTrackingLogEvent,
   sendTrackEvent,
 } from '@edx/frontend-platform/analytics';
+import { useNavigate } from 'react-router-dom';
 
-export default function JumpNavMenuItem({
+const JumpNavMenuItem = ({
   title,
   courseId,
   currentSequence,
   currentUnit,
   sequences,
   isDefault,
-}) {
+  onClick,
+}) => {
+  const navigate = useNavigate();
+
   function logEvent(targetUrl) {
     const eventName = 'edx.ui.lms.jump_nav.selected';
     const payload = {
@@ -34,25 +37,30 @@ export default function JumpNavMenuItem({
     }
     return `/course/${courseId}/${sequences[0].id}`;
   }
-  function handleClick() {
+  function handleClick(e) {
     const url = destinationUrl();
     logEvent(url);
-    history.push(url);
+    navigate(url);
+    if (onClick) { onClick(e); }
   }
 
   return (
-    <MenuItem
-      defaultSelected={isDefault}
-      onClick={() => handleClick()}
+    <Dropdown.Item
+      active={isDefault}
+      onClick={e => handleClick(e)}
     >
       {title}
-    </MenuItem>
+    </Dropdown.Item>
   );
-}
+};
 
 const sequenceShape = PropTypes.shape({
   id: PropTypes.string.isRequired,
 });
+
+JumpNavMenuItem.defaultProps = {
+  onClick: null,
+};
 
 JumpNavMenuItem.propTypes = {
   title: PropTypes.string.isRequired,
@@ -61,4 +69,7 @@ JumpNavMenuItem.propTypes = {
   courseId: PropTypes.string.isRequired,
   currentSequence: PropTypes.string.isRequired,
   currentUnit: PropTypes.string.isRequired,
+  onClick: PropTypes.func,
 };
+
+export default JumpNavMenuItem;

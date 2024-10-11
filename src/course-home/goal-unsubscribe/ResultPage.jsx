@@ -1,12 +1,12 @@
 import PropTypes from 'prop-types';
 import { getConfig } from '@edx/frontend-platform';
 import { FormattedMessage, injectIntl, intlShape } from '@edx/frontend-platform/i18n';
-import { Button, Hyperlink } from '@edx/paragon';
+import { Button, Hyperlink } from '@openedx/paragon';
 
 import messages from './messages';
 import { ReactComponent as UnsubscribeIcon } from './unsubscribe.svg';
 
-function ResultPage({ courseTitle, error, intl }) {
+const ResultPage = ({ courseTitle, error, intl }) => {
   const errorDescription = (
     <FormattedMessage
       id="learning.goals.unsubscribe.errorDescription"
@@ -44,7 +44,7 @@ function ResultPage({ courseTitle, error, intl }) {
       </Button>
     </>
   );
-}
+};
 
 ResultPage.defaultProps = {
   courseTitle: null,

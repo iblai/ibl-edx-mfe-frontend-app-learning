@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { breakpoints, useWindowSize } from '@edx/paragon';
+import { breakpoints, useWindowSize } from '@openedx/paragon';
 
 import CertificateStatus from './certificate-status/CertificateStatus';
 import CourseCompletion from './course-completion/CourseCompletion';
@@ -12,13 +12,13 @@ import RelatedLinks from './related-links/RelatedLinks';
 
 import { useModel } from '../../generic/model-store';
 
-function ProgressTab() {
+const ProgressTab = () => {
   const {
     courseId,
   } = useSelector(state => state.courseHome);
 
   const {
-    gradesFeatureIsFullyLocked,
+    gradesFeatureIsFullyLocked, disableProgressGraph,
   } = useModel('progress', courseId);
 
   const applyLockedOverlay = gradesFeatureIsFullyLocked ? 'locked-overlay' : '';
@@ -38,7 +38,7 @@ function ProgressTab() {
       <div className="row w-100 m-0">
         {/* Main body */}
         <div className="col-12 col-md-8 p-0">
-          <CourseCompletion />
+          {!disableProgressGraph && <CourseCompletion />}
           {!wideScreen && <CertificateStatus />}
           <CourseGrade />
           <div className={`grades my-4 p-4 rounded raised-card ${applyLockedOverlay}`} aria-hidden={gradesFeatureIsFullyLocked}>
@@ -55,6 +55,6 @@ function ProgressTab() {
       </div>
     </>
   );
-}
+};
 
 export default ProgressTab;

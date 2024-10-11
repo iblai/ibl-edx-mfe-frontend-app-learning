@@ -1,6 +1,5 @@
 import React from 'react';
-import { history } from '@edx/frontend-platform';
-import { Route } from 'react-router';
+import { Route, Routes, MemoryRouter } from 'react-router-dom';
 import { initializeTestStore, render, screen } from '../setupTest';
 import { TabContainer } from './index';
 
@@ -10,7 +9,9 @@ jest.mock('react-redux', () => ({
   ...jest.requireActual('react-redux'),
   useDispatch: () => mockDispatch,
 }));
-jest.mock('./TabPage', () => () => <div data-testid="TabPage" />);
+jest.mock('./TabPage', () => function () {
+  return <div data-testid="TabPage" />;
+});
 
 describe('Tab Container', () => {
   let courseId;
@@ -29,13 +30,19 @@ describe('Tab Container', () => {
   });
 
   it('renders correctly', () => {
-    history.push(`/course/${courseId}`);
     render(
-      <Route path="/course/:courseId">
-        <TabContainer {...mockData}>
-          children={[]}
-        </TabContainer>
-      </Route>,
+      <MemoryRouter initialEntries={[`/course/${courseId}`]}>
+        <Routes>
+          <Route
+            path="/course/:courseId"
+            element={(
+              <TabContainer {...mockData}>
+                children={[]}
+              </TabContainer>
+            )}
+          />
+        </Routes>
+      </MemoryRouter>,
     );
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -47,22 +54,25 @@ describe('Tab Container', () => {
 
   it('Should handle passing in a targetUserId', () => {
     const targetUserId = '1';
-    history.push(`/course/${courseId}/progress/${targetUserId}/`);
 
     render(
-      <Route
-        path="/course/:courseId/progress/:targetUserId/"
-        render={({ match }) => (
-          <TabContainer
-            fetch={() => mockFetch(match.params.courseId, match.params.targetUserId)}
-            tab="dummy"
-            slice="courseHome"
-          >
-            children={[]}
-          </TabContainer>
-
-        )}
-      />,
+      <MemoryRouter initialEntries={[`/course/${courseId}/progress/${targetUserId}/`]}>
+        <Routes>
+          <Route
+            path="/course/:courseId/progress/:targetUserId/"
+            element={(
+              <TabContainer
+                fetch={mockFetch}
+                tab="dummy"
+                slice="courseHome"
+                isProgressTab
+              >
+                children={[]}
+              </TabContainer>
+            )}
+          />
+        </Routes>
+      </MemoryRouter>,
     );
 
     expect(mockFetch).toHaveBeenCalledTimes(1);

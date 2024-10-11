@@ -1,9 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { FormattedMessage, FormattedDate } from '@edx/frontend-platform/i18n';
-import { PageBanner } from '@edx/paragon';
+import { PageBanner } from '@openedx/paragon';
 
-function AccessExpirationMasqueradeBanner({ payload }) {
+const AccessExpirationMasqueradeBanner = ({ payload }) => {
   const {
     expirationDate,
     userTimezone,
@@ -27,7 +27,7 @@ function AccessExpirationMasqueradeBanner({ payload }) {
       />
     </PageBanner>
   );
-}
+};
 
 AccessExpirationMasqueradeBanner.propTypes = {
   payload: PropTypes.shape({

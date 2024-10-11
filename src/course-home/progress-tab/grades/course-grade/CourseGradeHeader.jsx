@@ -4,13 +4,13 @@ import { useSelector } from 'react-redux';
 import { sendTrackEvent } from '@edx/frontend-platform/analytics';
 import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
-import { Locked } from '@edx/paragon/icons';
-import { Button, Icon } from '@edx/paragon';
+import { Locked } from '@openedx/paragon/icons';
+import { Button, Icon } from '@openedx/paragon';
 
 import { useModel } from '../../../../generic/model-store';
 import messages from '../messages';
 
-function CourseGradeHeader({ intl }) {
+const CourseGradeHeader = ({ intl }) => {
   const {
     courseId,
   } = useSelector(state => state.courseHome);
@@ -81,7 +81,7 @@ function CourseGradeHeader({ intl }) {
       )}
     </div>
   );
-}
+};
 
 CourseGradeHeader.propTypes = {
   intl: intlShape.isRequired,

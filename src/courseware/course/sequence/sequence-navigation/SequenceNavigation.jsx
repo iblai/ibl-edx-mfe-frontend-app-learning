@@ -1,7 +1,8 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { breakpoints, Button, useWindowSize } from '@edx/paragon';
-import { ChevronLeft, ChevronRight } from '@edx/paragon/icons';
+import { breakpoints, Button, useWindowSize } from '@openedx/paragon';
+import { ChevronLeft, ChevronRight } from '@openedx/paragon/icons';
 import classNames from 'classnames';
 import {
   injectIntl,
@@ -9,32 +10,41 @@ import {
   isRtl,
   getLocale,
 } from '@edx/frontend-platform/i18n';
-
+import { PluginSlot } from '@openedx/frontend-plugin-framework';
 import { useSelector } from 'react-redux';
-import { getCourseExitNavigation } from '../../course-exit';
+
+import { LOADED } from '@src/constants';
+import { GetCourseExitNavigation } from '../../course-exit';
 import UnitButton from './UnitButton';
 import SequenceNavigationTabs from './SequenceNavigationTabs';
 import { useSequenceNavigationMetadata } from './hooks';
 import { useModel } from '../../../../generic/model-store';
-import { LOADED } from '../../../data/slice';
 
 import messages from './messages';
-/** [MM-P2P] Experiment */
-import { MMP2PFlyoverTriggerMobile } from '../../../../experiments/mm-p2p';
 
-function SequenceNavigation({
+const SequenceNavigation = ({
   intl,
   unitId,
   sequenceId,
   className,
   onNavigate,
+  nextHandler,
+  previousHandler,
   nextSequenceHandler,
-  previousSequenceHandler,
-  goToCourseExitPage,
-  mmp2p,
-}) {
+  handleNavigate,
+  isOpen,
+  open,
+  close,
+}) => {
   const sequence = useModel('sequences', sequenceId);
-  const { isFirstUnit, isLastUnit } = useSequenceNavigationMetadata(sequenceId, unitId);
+  const {
+    isFirstUnit,
+    isLastUnit,
+    nextLink,
+    previousLink,
+    navigationDisabledPrevSequence,
+    navigationDisabledNextSequence,
+  } = useSequenceNavigationMetadata(sequenceId, unitId);
   const {
     courseId,
     sequenceStatus,
@@ -66,35 +76,73 @@ function SequenceNavigation({
     );
   };
 
-  const renderNextButton = () => {
-    const { exitActive, exitText } = getCourseExitNavigation(courseId, intl);
-    const buttonOnClick = isLastUnit ? goToCourseExitPage : nextSequenceHandler;
-    const buttonText = (isLastUnit && exitText) ? exitText : intl.formatMessage(messages.nextButton);
-    const disabled = isLastUnit && !exitActive;
-    const nextArrow = isRtl(getLocale()) ? ChevronLeft : ChevronRight;
-
-    return (
-      <Button variant="link" className="next-btn" onClick={buttonOnClick} disabled={disabled} iconAfter={nextArrow}>
-        {shouldDisplayNotificationTriggerInSequence ? null : buttonText}
+  const renderPreviousButton = () => {
+    const disabled = isFirstUnit;
+    const prevArrow = isRtl(getLocale()) ? ChevronRight : ChevronLeft;
+    return navigationDisabledPrevSequence || (
+      <Button
+        variant="link"
+        className="previous-btn"
+        onClick={previousHandler}
+        disabled={disabled}
+        iconBefore={prevArrow}
+        as={disabled ? undefined : Link}
+        to={disabled ? undefined : previousLink}
+      >
+        {shouldDisplayNotificationTriggerInSequence ? null : intl.formatMessage(messages.previousButton)}
       </Button>
     );
   };
 
-  const prevArrow = isRtl(getLocale()) ? ChevronRight : ChevronLeft;
+  const renderNextButton = () => {
+    const { exitActive, exitText } = GetCourseExitNavigation(courseId, intl);
+    const buttonText = (isLastUnit && exitText) ? exitText : intl.formatMessage(messages.nextButton);
+    const disabled = isLastUnit && !exitActive;
+    const nextArrow = isRtl(getLocale()) ? ChevronLeft : ChevronRight;
+
+    return navigationDisabledNextSequence || (
+      <PluginSlot
+        id="next_button_slot"
+        pluginProps={{
+          courseId,
+          disabled,
+          buttonText,
+          nextArrow,
+          nextLink,
+          shouldDisplayNotificationTriggerInSequence,
+          sequenceId,
+          unitId,
+          nextSequenceHandler,
+          handleNavigate,
+          isOpen,
+          open,
+          close,
+          linkComponent: Link,
+        }}
+      >
+        <Button
+          variant="link"
+          className="next-btn"
+          onClick={nextHandler}
+          disabled={disabled}
+          iconAfter={nextArrow}
+          as={disabled ? undefined : Link}
+          to={disabled ? undefined : nextLink}
+        >
+          {shouldDisplayNotificationTriggerInSequence ? null : buttonText}
+        </Button>
+      </PluginSlot>
+    );
+  };
 
   return sequenceStatus === LOADED && (
-    <nav id="courseware-sequenceNavigation" className={classNames('sequence-navigation', className)} style={{ width: shouldDisplayNotificationTriggerInSequence ? '90%' : null }}>
-      <Button variant="link" className="previous-btn" onClick={previousSequenceHandler} disabled={isFirstUnit} iconBefore={prevArrow}>
-        {shouldDisplayNotificationTriggerInSequence ? null : intl.formatMessage(messages.previousButton)}
-      </Button>
+    <nav id="courseware-sequence-navigation" data-testid="courseware-sequence-navigation" className={classNames('sequence-navigation', className, { 'mr-2': shouldDisplayNotificationTriggerInSequence })}>
+      {renderPreviousButton()}
       {renderUnitButtons()}
       {renderNextButton()}
-
-      {/** [MM-P2P] Experiment */}
-      { mmp2p.state.isEnabled && <MMP2PFlyoverTriggerMobile options={mmp2p} /> }
     </nav>
   );
-}
+};
 
 SequenceNavigation.propTypes = {
   intl: intlShape.isRequired,
@@ -102,25 +150,23 @@ SequenceNavigation.propTypes = {
   unitId: PropTypes.string,
   className: PropTypes.string,
   onNavigate: PropTypes.func.isRequired,
-  nextSequenceHandler: PropTypes.func.isRequired,
-  previousSequenceHandler: PropTypes.func.isRequired,
-  goToCourseExitPage: PropTypes.func.isRequired,
-  /** [MM-P2P] Experiment */
-  mmp2p: PropTypes.shape({
-    state: PropTypes.shape({
-      isEnabled: PropTypes.bool.isRequired,
-    }),
-  }),
+  nextHandler: PropTypes.func.isRequired,
+  previousHandler: PropTypes.func.isRequired,
+  close: PropTypes.func,
+  open: PropTypes.func,
+  isOpen: PropTypes.bool,
+  handleNavigate: PropTypes.func,
+  nextSequenceHandler: PropTypes.func,
 };
 
 SequenceNavigation.defaultProps = {
   className: null,
   unitId: null,
-
-  /** [MM-P2P] Experiment */
-  mmp2p: {
-    state: { isEnabled: false },
-  },
+  close: null,
+  open: null,
+  isOpen: false,
+  handleNavigate: null,
+  nextSequenceHandler: null,
 };
 
 export default injectIntl(SequenceNavigation);

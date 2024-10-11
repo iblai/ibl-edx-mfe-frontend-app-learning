@@ -7,7 +7,7 @@ import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 import {
   FormattedMessage, injectIntl, intlShape,
 } from '@edx/frontend-platform/i18n';
-import { Hyperlink } from '@edx/paragon';
+import { Hyperlink } from '@openedx/paragon';
 import { faSearch } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -16,7 +16,7 @@ import { useModel } from '../../../generic/model-store';
 import messages from './messages';
 import { logClick } from './utils';
 
-function CatalogSuggestion({ intl, variant }) {
+const CatalogSuggestion = ({ intl, variant }) => {
   const { courseId } = useSelector(state => state.courseware);
   const { org } = useModel('courseHomeMeta', courseId);
   const { administrator } = getAuthenticatedUser();
@@ -45,7 +45,7 @@ function CatalogSuggestion({ intl, variant }) {
       </div>
     </div>
   );
-}
+};
 
 CatalogSuggestion.propTypes = {
   intl: intlShape.isRequired,

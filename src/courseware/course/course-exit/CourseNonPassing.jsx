@@ -4,7 +4,7 @@ import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
 import { Helmet } from 'react-helmet';
 import { useSelector } from 'react-redux';
-import { Alert, Button } from '@edx/paragon';
+import { Alert, Button } from '@openedx/paragon';
 import { getConfig } from '@edx/frontend-platform';
 
 import { useModel } from '../../../generic/model-store';
@@ -14,7 +14,7 @@ import DashboardFootnote from './DashboardFootnote';
 import messages from './messages';
 import { logClick, logVisit } from './utils';
 
-function CourseNonPassing({ intl }) {
+const CourseNonPassing = ({ intl }) => {
   const { courseId } = useSelector(state => state.courseware);
   const {
     org,
@@ -58,7 +58,7 @@ function CourseNonPassing({ intl }) {
       </div>
     </>
   );
-}
+};
 
 CourseNonPassing.propTypes = {
   intl: intlShape.isRequired,

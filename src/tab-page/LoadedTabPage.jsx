@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { Helmet } from 'react-helmet';
 
 import { getConfig } from '@edx/frontend-platform';
-import { useToggle } from '@edx/paragon';
+import { useToggle } from '@openedx/paragon';
 
 import { CourseTabsNavigation } from '../course-tabs';
 import { useModel } from '../generic/model-store';
@@ -15,13 +15,13 @@ import useLogistrationAlert from '../alerts/logistration-alert';
 
 import ProductTours from '../product-tours/ProductTours';
 
-function LoadedTabPage({
+const LoadedTabPage = ({
   activeTabSlug,
   children,
   courseId,
   metadataModel,
   unitId,
-}) {
+}) => {
   const {
     celebrations,
     org,
@@ -85,7 +85,7 @@ function LoadedTabPage({
       </main>
     </>
   );
-}
+};
 
 LoadedTabPage.propTypes = {
   activeTabSlug: PropTypes.string.isRequired,

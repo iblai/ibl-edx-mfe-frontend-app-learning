@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Alert as ParagonAlert } from '@edx/paragon';
-import { CheckCircle, Info, WarningFilled } from '@edx/paragon/icons';
+import { Alert as ParagonAlert } from '@openedx/paragon';
+import { CheckCircle, Info, WarningFilled } from '@openedx/paragon/icons';
 
 import { ALERT_TYPES } from './UserMessagesProvider';
 
@@ -29,22 +29,20 @@ function getAlertIcon(type) {
   }
 }
 
-function Alert({
+const Alert = ({
   type, dismissible, children, onDismiss, stacked,
-}) {
-  return (
-    <ParagonAlert
-      data-testid={`alert-container-${type}`}
-      variant={getAlertVariant(type)}
-      icon={getAlertIcon(type)}
-      dismissible={dismissible}
-      onClose={onDismiss}
-      stacked={stacked}
-    >
-      {children}
-    </ParagonAlert>
-  );
-}
+}) => (
+  <ParagonAlert
+    data-testid={`alert-container-${type}`}
+    variant={getAlertVariant(type)}
+    icon={getAlertIcon(type)}
+    dismissible={dismissible}
+    onClose={onDismiss}
+    stacked={stacked}
+  >
+    {children}
+  </ParagonAlert>
+);
 
 Alert.propTypes = {
   type: PropTypes.oneOf([

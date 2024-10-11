@@ -1,9 +1,9 @@
 import { FormattedMessage } from '@edx/frontend-platform/i18n';
-import { Alert, Button } from '@edx/paragon';
+import { Alert, Button } from '@openedx/paragon';
 import React from 'react';
 import PropTypes from 'prop-types';
 
-function ScheduledContentAlert({ payload }) {
+const ScheduledContentAlert = ({ payload }) => {
   const {
     datesTabLink,
   } = payload;
@@ -38,7 +38,7 @@ function ScheduledContentAlert({ payload }) {
       </div>
     </Alert>
   );
-}
+};
 
 ScheduledContentAlert.propTypes = {
   payload: PropTypes.shape({

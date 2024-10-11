@@ -6,7 +6,7 @@ import {
   FormattedDate, FormattedMessage, injectIntl, intlShape,
 } from '@edx/frontend-platform/i18n';
 
-import { Button, Card } from '@edx/paragon';
+import { Button, Card } from '@openedx/paragon';
 import { getConfig } from '@edx/frontend-platform';
 import { useModel } from '../../../generic/model-store';
 import { COURSE_EXIT_MODES, getCourseExitMode } from '../../../courseware/course/course-exit/utils';
@@ -14,10 +14,14 @@ import { DashboardLink, IdVerificationSupportLink, ProfileLink } from '../../../
 import { requestCert } from '../../data/thunks';
 import messages from './messages';
 
-function CertificateStatus({ intl }) {
+const CertificateStatus = ({ intl }) => {
   const {
     courseId,
   } = useSelector(state => state.courseHome);
+
+  const {
+    entranceExamData,
+  } = useModel('coursewareMeta', courseId);
 
   const {
     isEnrolled,
@@ -42,6 +46,8 @@ function CertificateStatus({ intl }) {
     certificateAvailableDate,
   } = certificateData || {};
 
+  const entranceExamPassed = entranceExamData?.entranceExamPassed ?? null;
+
   const mode = getCourseExitMode(
     certificateData,
     hasScheduledContent,
@@ -49,6 +55,7 @@ function CertificateStatus({ intl }) {
     userHasPassingGrade,
     null, // CourseExitPageIsActive
     canViewCertificate,
+    entranceExamPassed,
   );
 
   const eventProperties = {
@@ -154,7 +161,7 @@ function CertificateStatus({ intl }) {
         certAvailabilityDate = <FormattedDate value={certificateAvailableDate} day="numeric" month="long" year="numeric" />;
         body = (
           <FormattedMessage
-            id="courseCelebration.certificateBody.notAvailable.endDate"
+            id="progress.certificateStatus.notAvailable.endDate"
             defaultMessage="This course ends on {endDate}. Final grades and any earned certificates are
             scheduled to be available after {certAvailabilityDate}."
             description="This shown for leaner when they are eligible for certifcate but it't not available yet, it could because leaners just finished the course quickly!"
@@ -206,6 +213,7 @@ function CertificateStatus({ intl }) {
       grade_variant: gradeEventName,
       certificate_status_variant: certEventName,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!certCase) {
@@ -257,7 +265,7 @@ function CertificateStatus({ intl }) {
       </Card>
     </section>
   );
-}
+};
 
 CertificateStatus.propTypes = {
   intl: intlShape.isRequired,

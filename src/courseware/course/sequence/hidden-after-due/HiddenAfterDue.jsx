@@ -1,14 +1,14 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { injectIntl, intlShape, FormattedMessage } from '@edx/frontend-platform/i18n';
-import { Alert, Hyperlink } from '@edx/paragon';
-import { Info } from '@edx/paragon/icons';
+import { Alert, Hyperlink } from '@openedx/paragon';
+import { Info } from '@openedx/paragon/icons';
 
 import { useModel } from '../../../../generic/model-store';
 
 import messages from './messages';
 
-function HiddenAfterDue({ courseId, intl }) {
+const HiddenAfterDue = ({ courseId, intl }) => {
   const { tabs } = useModel('courseHomeMeta', courseId);
 
   const progressTab = tabs.find(tab => tab.slug === 'progress');
@@ -31,8 +31,7 @@ function HiddenAfterDue({ courseId, intl }) {
           <>
             <br />
             <FormattedMessage
-              id="learn.hiddenAfterDue.gradeAvailable"
-              defaultMessage="If you have completed this assignment, your grade is available on the {progressPage}."
+              {...messages.gradeAvailable}
               values={{
                 progressPage: progressLink,
               }}
@@ -42,7 +41,7 @@ function HiddenAfterDue({ courseId, intl }) {
       </p>
     </Alert>
   );
-}
+};
 
 HiddenAfterDue.propTypes = {
   intl: intlShape.isRequired,

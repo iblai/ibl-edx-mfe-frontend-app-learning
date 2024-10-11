@@ -5,13 +5,13 @@ import { useSelector } from 'react-redux';
 import {
   getLocale, injectIntl, intlShape, isRtl,
 } from '@edx/frontend-platform/i18n';
-import { OverlayTrigger, Popover } from '@edx/paragon';
+import { OverlayTrigger, Popover } from '@openedx/paragon';
 
 import { useModel } from '../../../../generic/model-store';
 
 import messages from '../messages';
 
-function CurrentGradeTooltip({ intl, tooltipClassName }) {
+const CurrentGradeTooltip = ({ intl, tooltipClassName }) => {
   const {
     courseId,
   } = useSelector(state => state.courseHome);
@@ -62,7 +62,7 @@ function CurrentGradeTooltip({ intl, tooltipClassName }) {
       </text>
     </>
   );
-}
+};
 
 CurrentGradeTooltip.defaultProps = {
   tooltipClassName: '',

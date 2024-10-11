@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 
 import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
-import { OverlayTrigger, Popover } from '@edx/paragon';
+import { OverlayTrigger, Popover } from '@openedx/paragon';
 
 import messages from './messages';
 
-function IncompleteDonutSegment({ incompletePercentage, intl }) {
+const IncompleteDonutSegment = ({ incompletePercentage, intl }) => {
+  const [showIncompletePopover, setShowIncompletePopover] = useState(false);
+
   if (!incompletePercentage) {
     return null;
   }
-
-  const [showIncompletePopover, setShowIncompletePopover] = useState(false);
 
   const incompleteSegmentOffset = (3.6 * incompletePercentage) / 16;
   const incompleteTooltipDegree = incompletePercentage < 100 ? incompleteSegmentOffset : 0;
@@ -37,7 +37,7 @@ function IncompleteDonutSegment({ incompletePercentage, intl }) {
         show={showIncompletePopover}
         placement="top"
         overlay={(
-          <Popover aria-hidden="true">
+          <Popover id="incomplete-tooltip-popover" aria-hidden="true">
             <Popover.Content>
               {intl.formatMessage(messages.incompleteContentTooltip)}
             </Popover.Content>
@@ -49,7 +49,7 @@ function IncompleteDonutSegment({ incompletePercentage, intl }) {
       </OverlayTrigger>
     </g>
   );
-}
+};
 
 IncompleteDonutSegment.propTypes = {
   incompletePercentage: PropTypes.number.isRequired,

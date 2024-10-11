@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { camelCaseObject, getConfig } from '@edx/frontend-platform';
@@ -6,10 +7,10 @@ import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import {
   FormattedMessage, injectIntl, intlShape,
 } from '@edx/frontend-platform/i18n';
-import { Lightbulb, MoneyFilled } from '@edx/paragon/icons';
+import { Lightbulb, MoneyFilled } from '@openedx/paragon/icons';
 import {
   Alert, breakpoints, Icon, ModalDialog, Spinner, useWindowSize,
-} from '@edx/paragon';
+} from '@openedx/paragon';
 import { useDispatch } from 'react-redux';
 import { UpgradeNowButton } from '../../generic/upgrade-button';
 
@@ -50,16 +51,20 @@ async function calculateVoucherDiscount(voucher, sku, username) {
     .then(res => camelCaseObject(res));
 }
 
-function StreakModal({
+const CloseText = ({ intl }) => (
+  <span>
+    {intl.formatMessage(messages.streakButton)}
+    <span className="sr-only">. {intl.formatMessage(messages.streakButtonSrOnly)}</span>
+  </span>
+);
+
+const StreakModal = ({
   courseId, metadataModel, streakLengthToCelebrate, intl, isStreakCelebrationOpen,
   closeStreakCelebration, streakDiscountCouponEnabled, verifiedMode, ...rest
-}) {
-  if (!isStreakCelebrationOpen) {
-    return null;
-  }
+}) => {
   const { org, celebrations, username } = useModel('courseHomeMeta', courseId);
   const factoid = getRandomFactoid(intl, streakLengthToCelebrate);
-  // eslint-disable-next-line no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [randomFactoid, setRandomFactoid] = useState(factoid); // Don't change factoid on re-render
 
   // Open edX Folks: if you create a voucher with this code, the MFE will notice and show the discount
@@ -106,15 +111,11 @@ function StreakModal({
     } else {
       setDiscountPercent(0);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streakDiscountCouponEnabled, username, verifiedMode]);
 
-  function CloseText() {
-    return (
-      <span>
-        {intl.formatMessage(messages.streakButton)}
-        <span className="sr-only">. {intl.formatMessage(messages.streakButtonSrOnly)}</span>
-      </span>
-    );
+  if (!isStreakCelebrationOpen) {
+    return null;
   }
 
   let upgradeUrl;
@@ -230,12 +231,12 @@ function StreakModal({
           </>
         )}
         { !queryingDiscount && !showOffer && (
-          <ModalDialog.CloseButton className="px-5" variant="primary"><CloseText /></ModalDialog.CloseButton>
+          <ModalDialog.CloseButton className="px-5" variant="primary"><CloseText intl={intl} /></ModalDialog.CloseButton>
         )}
       </ModalDialog.Footer>
     </ModalDialog>
   );
-}
+};
 
 StreakModal.defaultProps = {
   isStreakCelebrationOpen: false,
