@@ -5,7 +5,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Factory } from 'rosie';
 import { getConfig } from '@edx/frontend-platform';
-import { sendTrackEvent, sendTrackingLogEvent } from '@edx/frontend-platform/analytics';
+import { sendTrackEvent } from '@edx/frontend-platform/analytics';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import MockAdapter from 'axios-mock-adapter';
 import Cookies from 'js-cookie';
@@ -54,7 +54,7 @@ describe('Outline Tab', () => {
   const goalUrl = `${getConfig().LMS_BASE_URL}/api/course_home/save_course_goal`;
   const masqueradeUrl = `${getConfig().LMS_BASE_URL}/courses/${courseId}/masquerade`;
   const outlineUrl = `${getConfig().LMS_BASE_URL}/api/course_home/outline/${courseId}`;
-  const proctoringInfoUrl = `${getConfig().LMS_BASE_URL}/api/edx_proctoring/v1/user_onboarding/status?is_learning_mfe=true&course_id=${encodeURIComponent(courseId)}&username=MockUser`;
+  const proctoringInfoUrl = `${getConfig().EXAMS_BASE_URL}/api/v1/student/course_id/${encodeURIComponent(courseId)}/onboarding?username=MockUser`;
 
   const store = initializeStore();
   const defaultMetadata = Factory.build('courseHomeMetadata');
@@ -139,10 +139,11 @@ describe('Outline Tab', () => {
       });
       await fetchAndRender();
 
-      expect(screen.getByTestId('outline_tab_notifications_slot')).toBeInTheDocument();
+      expect(screen.getByTestId('org.openedx.frontend.learning.course_outline_tab_notifications.v1')).toBeInTheDocument();
     });
 
     it('handles expand/collapse all button click', async () => {
+      const user = userEvent.setup();
       await fetchAndRender();
       // Button renders as "Expand All"
       const expandButton = screen.getByRole('button', { name: 'Expand all' });
@@ -153,11 +154,11 @@ describe('Outline Tab', () => {
       expect(collapsedSectionNode).toHaveAttribute('aria-expanded', 'false');
 
       // Click to expand section
-      userEvent.click(expandButton);
+      await user.click(expandButton);
       await waitFor(() => expect(collapsedSectionNode).toHaveAttribute('aria-expanded', 'true'));
 
       // Click to collapse section
-      userEvent.click(expandButton);
+      await user.click(expandButton);
       await waitFor(() => expect(collapsedSectionNode).toHaveAttribute('aria-expanded', 'false'));
     });
 
@@ -167,7 +168,7 @@ describe('Outline Tab', () => {
         course_blocks: { blocks: courseBlocks.blocks },
       });
       await fetchAndRender();
-      expect(screen.getByTitle('Completed section')).toBeInTheDocument();
+      expect(screen.getByLabelText('Completed section')).toBeInTheDocument();
     });
 
     it('displays correct icon for incomplete assignment', async () => {
@@ -176,7 +177,7 @@ describe('Outline Tab', () => {
         course_blocks: { blocks: courseBlocks.blocks },
       });
       await fetchAndRender();
-      expect(screen.getByTitle('Incomplete section')).toBeInTheDocument();
+      expect(screen.getByLabelText('Incomplete section')).toBeInTheDocument();
     });
 
     it('SequenceLink displays link', async () => {
@@ -275,20 +276,33 @@ describe('Outline Tab', () => {
       });
 
       it('renders show more/less button and handles click', async () => {
+        const user = userEvent.setup();
         expect(screen.getByTestId('alert-container-welcome')).toBeInTheDocument();
         let showMoreButton = screen.getByRole('button', { name: 'Show More' });
         expect(showMoreButton).toBeInTheDocument();
 
-        userEvent.click(showMoreButton);
+        await user.click(showMoreButton);
         let showLessButton = screen.getByRole('button', { name: 'Show Less' });
         expect(showLessButton).toBeInTheDocument();
         expect(screen.getByTestId('long-welcome-message-iframe')).toBeInTheDocument();
 
-        userEvent.click(showLessButton);
+        await user.click(showLessButton);
         showLessButton = screen.queryByRole('button', { name: 'Show Less' });
         expect(showLessButton).not.toBeInTheDocument();
         showMoreButton = screen.getByRole('button', { name: 'Show More' });
         expect(showMoreButton).toBeInTheDocument();
+      });
+
+      it('dismisses message', async () => {
+        expect(screen.getByTestId('alert-container-welcome')).toBeInTheDocument();
+        const dismissButton = screen.queryByRole('button', { name: 'Dismiss' });
+        const expandButton = screen.queryByRole('button', { name: 'Expand all' });
+
+        fireEvent.click(dismissButton);
+
+        expect(expandButton).toHaveFocus();
+
+        expect(screen.queryByText('Welcome Message')).toBeNull();
       });
     });
 
@@ -1173,80 +1187,6 @@ describe('Outline Tab', () => {
       expect(screen.queryByRole('link', { name: 'Review instructions and system requirements' })).toBeInTheDocument();
       expect(screen.queryByText('You must complete the onboarding process prior to taking any proctored exam.')).not.toBeInTheDocument();
       expect(screen.queryByText('Onboarding profile review can take 2+ business days.')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('Upgrade Card', () => {
-    it('renders title when upgrade is available', async () => {
-      await fetchAndRender();
-      expect(screen.queryByRole('heading', { name: 'Pursue a verified certificate' })).toBeInTheDocument();
-    });
-
-    it('displays link to upgrade', async () => {
-      await fetchAndRender();
-      expect(screen.getByRole('link', { name: 'Upgrade for $149' })).toBeInTheDocument();
-    });
-
-    it('viewing upgrade card sends analytics', async () => {
-      sendTrackEvent.mockClear();
-      sendTrackingLogEvent.mockClear();
-      await fetchAndRender();
-
-      expect(sendTrackEvent).toHaveBeenCalledTimes(1);
-      expect(sendTrackEvent).toHaveBeenCalledWith('Promotion Viewed', {
-        org_key: 'edX',
-        courserun_key: courseId,
-        creative: 'sidebarupsell',
-        name: 'In-Course Verification Prompt',
-        position: 'sidebar-message',
-        promotion_id: 'courseware_verified_certificate_upsell',
-      });
-
-      expect(sendTrackingLogEvent).toHaveBeenCalledTimes(1);
-      expect(sendTrackingLogEvent).toHaveBeenCalledWith('edx.bi.course.upgrade.sidebarupsell.displayed', {
-        org_key: 'edX',
-        courserun_key: courseId,
-      });
-    });
-
-    it('clicking upgrade link sends analytics', async () => {
-      await fetchAndRender();
-
-      // Clearing after render to remove any events sent on view (ex. 'Promotion Viewed')
-      sendTrackEvent.mockClear();
-      sendTrackingLogEvent.mockClear();
-      const upgradeButton = screen.getByRole('link', { name: 'Upgrade for $149' });
-
-      fireEvent.click(upgradeButton);
-
-      expect(sendTrackEvent).toHaveBeenCalledTimes(2);
-      expect(sendTrackEvent).toHaveBeenNthCalledWith(1, 'Promotion Clicked', {
-        org_key: 'edX',
-        courserun_key: courseId,
-        creative: 'sidebarupsell',
-        name: 'In-Course Verification Prompt',
-        position: 'sidebar-message',
-        promotion_id: 'courseware_verified_certificate_upsell',
-      });
-      expect(sendTrackEvent).toHaveBeenNthCalledWith(2, 'edx.bi.ecommerce.upsell_links_clicked', {
-        org_key: 'edX',
-        courserun_key: courseId,
-        linkCategory: 'green_upgrade',
-        linkName: 'course_home_green',
-        linkType: 'button',
-        pageName: 'course_home',
-      });
-
-      expect(sendTrackingLogEvent).toHaveBeenCalledTimes(2);
-      expect(sendTrackingLogEvent).toHaveBeenNthCalledWith(1, 'edx.bi.course.upgrade.sidebarupsell.clicked', {
-        org_key: 'edX',
-        courserun_key: courseId,
-      });
-      expect(sendTrackingLogEvent).toHaveBeenNthCalledWith(2, 'edx.course.enrollment.upgrade.clicked', {
-        org_key: 'edX',
-        courserun_key: courseId,
-        location: 'sidebar-message',
-      });
     });
   });
 

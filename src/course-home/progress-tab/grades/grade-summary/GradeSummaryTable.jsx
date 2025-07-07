@@ -1,11 +1,8 @@
-import React from 'react';
 import PropTypes from 'prop-types';
-import { useSelector } from 'react-redux';
 
-import {
-  getLocale, injectIntl, intlShape, isRtl,
-} from '@edx/frontend-platform/i18n';
+import { getLocale, isRtl, useIntl } from '@edx/frontend-platform/i18n';
 import { DataTable } from '@openedx/paragon';
+import { useContextId } from '../../../../data/hooks';
 import { useModel } from '../../../../generic/model-store';
 
 import AssignmentTypeCell from './AssignmentTypeCell';
@@ -14,10 +11,9 @@ import GradeSummaryTableFooter from './GradeSummaryTableFooter';
 
 import messages from '../messages';
 
-const GradeSummaryTable = ({ intl, setAllOfSomeAssignmentTypeIsLocked }) => {
-  const {
-    courseId,
-  } = useSelector(state => state.courseHome);
+const GradeSummaryTable = ({ setAllOfSomeAssignmentTypeIsLocked }) => {
+  const intl = useIntl();
+  const courseId = useContextId();
 
   const {
     gradingPolicy: {
@@ -32,6 +28,14 @@ const GradeSummaryTable = ({ intl, setAllOfSomeAssignmentTypeIsLocked }) => {
   const getFootnoteId = (assignment) => {
     const footnoteId = assignment.shortLabel ? assignment.shortLabel : assignment.type;
     return footnoteId.replace(/[^A-Za-z0-9.-_]+/g, '-');
+  };
+
+  const getGradePercent = (grade) => {
+    if (Number.isInteger(grade * 100)) {
+      return (grade * 100).toFixed(0);
+    }
+
+    return (grade * 100).toFixed(2);
   };
 
   const hasNoAccessToAssignmentsOfType = (assignmentType) => {
@@ -52,31 +56,37 @@ const GradeSummaryTable = ({ intl, setAllOfSomeAssignmentTypeIsLocked }) => {
   };
 
   const gradeSummaryData = assignmentPolicies.map((assignment) => {
+    const {
+      averageGrade,
+      numDroppable,
+      type: assignmentType,
+      weight,
+      weightedGrade,
+    } = assignment;
     let footnoteId = '';
     let footnoteMarker;
 
-    if (assignment.numDroppable > 0) {
+    if (numDroppable > 0) {
       footnoteId = getFootnoteId(assignment);
       footnotes.push({
         id: footnoteId,
-        numDroppable: assignment.numDroppable,
-        assignmentType: assignment.type,
+        numDroppable,
+        assignmentType,
       });
 
       footnoteMarker = footnotes.length;
     }
 
-    const locked = !gradesFeatureIsFullyLocked && hasNoAccessToAssignmentsOfType(assignment.type);
-
+    const locked = !gradesFeatureIsFullyLocked && hasNoAccessToAssignmentsOfType(assignmentType);
     const isLocaleRtl = isRtl(getLocale());
 
     return {
       type: {
-        footnoteId, footnoteMarker, type: assignment.type, locked,
+        footnoteId, footnoteMarker, type: assignmentType, locked,
       },
-      weight: { weight: `${(assignment.weight * 100).toFixed(0)}${isLocaleRtl ? '\u200f' : ''}%`, locked },
-      grade: { grade: `${(assignment.averageGrade * 100).toFixed(0)}${isLocaleRtl ? '\u200f' : ''}%`, locked },
-      weightedGrade: { weightedGrade: `${(assignment.weightedGrade * 100).toFixed(0)}${isLocaleRtl ? '\u200f' : ''}%`, locked },
+      weight: { weight: `${(weight * 100).toFixed(0)}${isLocaleRtl ? '\u200f' : ''}%`, locked },
+      grade: { grade: `${getGradePercent(averageGrade)}${isLocaleRtl ? '\u200f' : ''}%`, locked },
+      weightedGrade: { weightedGrade: `${getGradePercent(weightedGrade)}${isLocaleRtl ? '\u200f' : ''}%`, locked },
     };
   });
   const getAssignmentTypeCell = (value) => (
@@ -137,8 +147,7 @@ const GradeSummaryTable = ({ intl, setAllOfSomeAssignmentTypeIsLocked }) => {
 };
 
 GradeSummaryTable.propTypes = {
-  intl: intlShape.isRequired,
   setAllOfSomeAssignmentTypeIsLocked: PropTypes.func.isRequired,
 };
 
-export default injectIntl(GradeSummaryTable);
+export default GradeSummaryTable;

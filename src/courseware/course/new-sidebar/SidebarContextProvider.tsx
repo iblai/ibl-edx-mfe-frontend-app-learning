@@ -25,8 +25,9 @@ const SidebarProvider: React.FC<Props> = ({
 }) => {
   const { verifiedMode } = useModel('courseHomeMeta', courseId);
   const topic = useModel('discussionTopics', unitId);
-  const shouldDisplayFullScreen = useWindowSize().width < breakpoints.large.minWidth;
-  const shouldDisplaySidebarOpen = useWindowSize().width > breakpoints.medium.minWidth;
+  const windowWidth = useWindowSize().width ?? window.innerWidth;
+  const shouldDisplayFullScreen = windowWidth < breakpoints.large.minWidth;
+  const shouldDisplaySidebarOpen = windowWidth > breakpoints.medium.minWidth;
   const query = new URLSearchParams(window.location.search);
   const isInitiallySidebarOpen = shouldDisplaySidebarOpen || query.get('sidebar') === 'true';
   const sidebarKey = `sidebar.${courseId}`;
@@ -53,6 +54,8 @@ const SidebarProvider: React.FC<Props> = ({
   }, [courseId]);
 
   useEffect(() => {
+    window.sessionStorage.setItem('hideCourseOutlineSidebar', 'true');
+    window.sessionStorage.setItem(`notificationTrayStatus.${courseId}`, 'open');
     setHideDiscussionbar(!isDiscussionbarAvailable);
     setHideNotificationbar(!isNotificationbarAvailable);
     if (initialSidebar && currentSidebar !== initialSidebar) {

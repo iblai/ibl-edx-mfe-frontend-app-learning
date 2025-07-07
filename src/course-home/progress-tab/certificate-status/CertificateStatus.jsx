@@ -1,23 +1,22 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import { sendTrackEvent } from '@edx/frontend-platform/analytics';
 import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
-import {
-  FormattedDate, FormattedMessage, injectIntl, intlShape,
-} from '@edx/frontend-platform/i18n';
+import { FormattedDate, FormattedMessage, useIntl } from '@edx/frontend-platform/i18n';
 
 import { Button, Card } from '@openedx/paragon';
 import { getConfig } from '@edx/frontend-platform';
+import { useContextId } from '../../../data/hooks';
 import { useModel } from '../../../generic/model-store';
 import { COURSE_EXIT_MODES, getCourseExitMode } from '../../../courseware/course/course-exit/utils';
 import { DashboardLink, IdVerificationSupportLink, ProfileLink } from '../../../shared/links';
 import { requestCert } from '../../data/thunks';
 import messages from './messages';
+import ProgressCertificateStatusSlot from '../../../plugin-slots/ProgressCertificateStatusSlot';
 
-const CertificateStatus = ({ intl }) => {
-  const {
-    courseId,
-  } = useSelector(state => state.courseHome);
+const CertificateStatus = () => {
+  const intl = useIntl();
+  const courseId = useContextId();
 
   const {
     entranceExamData,
@@ -215,7 +214,6 @@ const CertificateStatus = ({ intl }) => {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   if (!certCase) {
     return null;
   }
@@ -243,32 +241,32 @@ const CertificateStatus = ({ intl }) => {
   return (
     <section data-testid="certificate-status-component" className="text-dark-700 mb-4">
       <Card className="bg-light-200 raised-card">
-        <Card.Header title={header} />
-        <Card.Section className="small text-gray-700">
-          {body}
-        </Card.Section>
-        <Card.Footer>
-          {buttonText && (buttonLocation || buttonAction) && (
-            <Button
-              variant="outline-brand"
-              onClick={() => {
-                logCertificateStatusButtonClicked(certStatus);
-                if (buttonAction) { buttonAction(); }
-              }}
-              href={buttonLocation}
-              block
-            >
-              {buttonText}
-            </Button>
-          )}
-        </Card.Footer>
+        <ProgressCertificateStatusSlot courseId={courseId}>
+          <div id={`${certCase}_certificate_status`}>
+            <Card.Header title={header} />
+            <Card.Section className="small text-gray-700">
+              {body}
+            </Card.Section>
+            <Card.Footer>
+              {buttonText && (buttonLocation || buttonAction) && (
+                <Button
+                  variant="outline-brand"
+                  onClick={() => {
+                    logCertificateStatusButtonClicked(certStatus);
+                    if (buttonAction) { buttonAction(); }
+                  }}
+                  href={buttonLocation}
+                  block
+                >
+                  {buttonText}
+                </Button>
+              )}
+            </Card.Footer>
+          </div>
+        </ProgressCertificateStatusSlot>
       </Card>
     </section>
   );
 };
 
-CertificateStatus.propTypes = {
-  intl: intlShape.isRequired,
-};
-
-export default injectIntl(CertificateStatus);
+export default CertificateStatus;

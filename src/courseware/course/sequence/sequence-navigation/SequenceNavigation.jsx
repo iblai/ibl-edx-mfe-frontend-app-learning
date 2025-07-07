@@ -1,16 +1,7 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { breakpoints, Button, useWindowSize } from '@openedx/paragon';
-import { ChevronLeft, ChevronRight } from '@openedx/paragon/icons';
+import { breakpoints, useWindowSize } from '@openedx/paragon';
 import classNames from 'classnames';
-import {
-  injectIntl,
-  intlShape,
-  isRtl,
-  getLocale,
-} from '@edx/frontend-platform/i18n';
-import { PluginSlot } from '@openedx/frontend-plugin-framework';
+import { useIntl } from '@edx/frontend-platform/i18n';
 import { useSelector } from 'react-redux';
 
 import { LOADED } from '@src/constants';
@@ -21,21 +12,18 @@ import { useSequenceNavigationMetadata } from './hooks';
 import { useModel } from '../../../../generic/model-store';
 
 import messages from './messages';
+import PreviousButton from './generic/PreviousButton';
+import { NextUnitTopNavTriggerSlot } from '../../../../plugin-slots/NextUnitTopNavTriggerSlot';
 
 const SequenceNavigation = ({
-  intl,
   unitId,
   sequenceId,
   className,
   onNavigate,
   nextHandler,
   previousHandler,
-  nextSequenceHandler,
-  handleNavigate,
-  isOpen,
-  open,
-  close,
 }) => {
+  const intl = useIntl();
   const sequence = useModel('sequences', sequenceId);
   const {
     isFirstUnit,
@@ -76,62 +64,39 @@ const SequenceNavigation = ({
     );
   };
 
-  const renderPreviousButton = () => {
-    const disabled = isFirstUnit;
-    const prevArrow = isRtl(getLocale()) ? ChevronRight : ChevronLeft;
-    return navigationDisabledPrevSequence || (
-      <Button
-        variant="link"
-        className="previous-btn"
-        onClick={previousHandler}
-        disabled={disabled}
-        iconBefore={prevArrow}
-        as={disabled ? undefined : Link}
-        to={disabled ? undefined : previousLink}
-      >
-        {shouldDisplayNotificationTriggerInSequence ? null : intl.formatMessage(messages.previousButton)}
-      </Button>
-    );
-  };
+  const renderPreviousButton = () => navigationDisabledPrevSequence || (
+    <PreviousButton
+      variant="link"
+      buttonStyle="previous-btn"
+      onClick={previousHandler}
+      previousLink={previousLink}
+      isFirstUnit={isFirstUnit}
+      buttonLabel={shouldDisplayNotificationTriggerInSequence ? null : intl.formatMessage(messages.previousButton)}
+    />
+  );
 
   const renderNextButton = () => {
+    let buttonText;
     const { exitActive, exitText } = GetCourseExitNavigation(courseId, intl);
-    const buttonText = (isLastUnit && exitText) ? exitText : intl.formatMessage(messages.nextButton);
     const disabled = isLastUnit && !exitActive;
-    const nextArrow = isRtl(getLocale()) ? ChevronLeft : ChevronRight;
 
+    if (isLastUnit && exitText) {
+      buttonText = exitText;
+    } else if (!shouldDisplayNotificationTriggerInSequence) {
+      buttonText = intl.formatMessage(messages.nextButton);
+    }
     return navigationDisabledNextSequence || (
-      <PluginSlot
-        id="next_button_slot"
-        pluginProps={{
-          courseId,
+      <NextUnitTopNavTriggerSlot
+        {...{
           disabled,
           buttonText,
-          nextArrow,
           nextLink,
-          shouldDisplayNotificationTriggerInSequence,
           sequenceId,
-          unitId,
-          nextSequenceHandler,
-          handleNavigate,
-          isOpen,
-          open,
-          close,
-          linkComponent: Link,
+          onClickHandler: nextHandler,
+          variant: 'link',
+          buttonStyle: 'next-btn',
         }}
-      >
-        <Button
-          variant="link"
-          className="next-btn"
-          onClick={nextHandler}
-          disabled={disabled}
-          iconAfter={nextArrow}
-          as={disabled ? undefined : Link}
-          to={disabled ? undefined : nextLink}
-        >
-          {shouldDisplayNotificationTriggerInSequence ? null : buttonText}
-        </Button>
-      </PluginSlot>
+      />
     );
   };
 
@@ -145,28 +110,17 @@ const SequenceNavigation = ({
 };
 
 SequenceNavigation.propTypes = {
-  intl: intlShape.isRequired,
   sequenceId: PropTypes.string.isRequired,
   unitId: PropTypes.string,
   className: PropTypes.string,
   onNavigate: PropTypes.func.isRequired,
   nextHandler: PropTypes.func.isRequired,
   previousHandler: PropTypes.func.isRequired,
-  close: PropTypes.func,
-  open: PropTypes.func,
-  isOpen: PropTypes.bool,
-  handleNavigate: PropTypes.func,
-  nextSequenceHandler: PropTypes.func,
 };
 
 SequenceNavigation.defaultProps = {
   className: null,
   unitId: null,
-  close: null,
-  open: null,
-  isOpen: false,
-  handleNavigate: null,
-  nextSequenceHandler: null,
 };
 
-export default injectIntl(SequenceNavigation);
+export default SequenceNavigation;

@@ -1,38 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import classNames from 'classnames';
-import { useDispatch, useSelector } from 'react-redux';
 import { Button, useToggle, IconButton } from '@openedx/paragon';
-import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
+import { useIntl } from '@edx/frontend-platform/i18n';
 import {
   MenuOpen as MenuOpenIcon,
   ChevronLeft as ChevronLeftIcon,
 } from '@openedx/paragon/icons';
 
-import { useModel } from '@src/generic/model-store';
-import { LOADING, LOADED } from '@src/constants';
+import { LOADING } from '@src/constants';
 import PageLoading from '@src/generic/PageLoading';
-import {
-  getSequenceId,
-  getCourseOutline,
-  getCourseOutlineStatus,
-  getCourseOutlineShouldUpdate,
-} from '../../../../data/selectors';
-import { getCourseOutlineStructure } from '../../../../data/thunks';
 import SidebarSection from './components/SidebarSection';
 import SidebarSequence from './components/SidebarSequence';
 import { ID } from './constants';
 import { useCourseOutlineSidebar } from './hooks';
 import messages from './messages';
 
-const CourseOutlineTray = ({ intl }) => {
+const CourseOutlineTray = () => {
+  const intl = useIntl();
   const [selectedSection, setSelectedSection] = useState(null);
   const [isDisplaySequenceLevel, setDisplaySequenceLevel, setDisplaySectionLevel] = useToggle(true);
-
-  const dispatch = useDispatch();
-  const activeSequenceId = useSelector(getSequenceId);
-  const { sections = {}, sequences = {} } = useSelector(getCourseOutline);
-  const courseOutlineStatus = useSelector(getCourseOutlineStatus);
-  const courseOutlineShouldUpdate = useSelector(getCourseOutlineShouldUpdate);
 
   const {
     courseId,
@@ -42,15 +28,19 @@ const CourseOutlineTray = ({ intl }) => {
     handleToggleCollapse,
     isActiveEntranceExam,
     shouldDisplayFullScreen,
+    courseOutlineStatus,
+    activeSequenceId,
+    sections,
+    sequences,
   } = useCourseOutlineSidebar();
 
-  const {
-    sectionId: activeSectionId,
-  } = useModel('sequences', activeSequenceId);
-
+  const resolvedSectionId = selectedSection
+    || Object.keys(sections).find(
+      (sectionId) => sections[sectionId].sequenceIds.includes(activeSequenceId),
+    );
   const sectionsIds = Object.keys(sections);
-  const sequenceIds = sections[selectedSection || activeSectionId]?.sequenceIds || [];
-  const backButtonTitle = sections[selectedSection || activeSectionId]?.title;
+  const sequenceIds = sections[resolvedSectionId]?.sequenceIds || [];
+  const backButtonTitle = sections[resolvedSectionId]?.title;
 
   const handleBackToSectionLevel = () => {
     setDisplaySectionLevel();
@@ -86,12 +76,6 @@ const CourseOutlineTray = ({ intl }) => {
       />
     </div>
   );
-
-  useEffect(() => {
-    if ((isEnabledSidebar && courseOutlineStatus !== LOADED) || courseOutlineShouldUpdate) {
-      dispatch(getCourseOutlineStructure(courseId));
-    }
-  }, [courseId, isEnabledSidebar, courseOutlineShouldUpdate]);
 
   if (!isEnabledSidebar || isActiveEntranceExam || currentSidebar !== ID) {
     return null;
@@ -147,10 +131,6 @@ const CourseOutlineTray = ({ intl }) => {
   );
 };
 
-CourseOutlineTray.propTypes = {
-  intl: intlShape.isRequired,
-};
-
 CourseOutlineTray.ID = ID;
 
-export default injectIntl(CourseOutlineTray);
+export default CourseOutlineTray;

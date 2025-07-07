@@ -4,8 +4,8 @@ import {
   getConfig,
 } from '@edx/frontend-platform';
 import { AppProvider, ErrorPage, PageWrap } from '@edx/frontend-platform/react';
-import React from 'react';
-import ReactDOM from 'react-dom';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
 import { Routes, Route } from 'react-router-dom';
 
 import { Helmet } from 'react-helmet';
@@ -27,7 +27,7 @@ import { TabContainer } from './tab-page';
 
 import { fetchDatesTab, fetchOutlineTab, fetchProgressTab } from './course-home/data';
 import { fetchCourse } from './courseware/data';
-import initializeStore from './store';
+import { store } from './store';
 import NoticesProvider from './generic/notices';
 import PathFixesProvider from './generic/path-fixes';
 import LiveTab from './course-home/live-tab/LiveTab';
@@ -35,114 +35,132 @@ import CourseAccessErrorPage from './generic/CourseAccessErrorPage';
 import DecodePageRoute from './decode-page-route';
 import { DECODE_ROUTES, ROUTES } from './constants';
 import PreferencesUnsubscribe from './preferences-unsubscribe';
+import PageNotFound from './generic/PageNotFound';
 
 subscribe(APP_READY, () => {
-  ReactDOM.render(
-    <AppProvider store={initializeStore()}>
-      <Helmet>
-        <link rel="shortcut icon" href={getConfig().FAVICON_URL} type="image/x-icon" />
-      </Helmet>
-      <PathFixesProvider>
-        <NoticesProvider>
-          <UserMessagesProvider>
-            <Routes>
-              <Route path={ROUTES.UNSUBSCRIBE} element={<PageWrap><GoalUnsubscribe /></PageWrap>} />
-              <Route path={ROUTES.REDIRECT} element={<PageWrap><CoursewareRedirectLandingPage /></PageWrap>} />
-              <Route path={ROUTES.PREFERENCES_UNSUBSCRIBE} element={<PageWrap><PreferencesUnsubscribe /></PageWrap>} />
-              <Route
-                path={DECODE_ROUTES.ACCESS_DENIED}
-                element={<DecodePageRoute><CourseAccessErrorPage /></DecodePageRoute>}
-              />
-              <Route
-                path={DECODE_ROUTES.HOME}
-                element={(
-                  <DecodePageRoute>
-                    <TabContainer tab="outline" fetch={fetchOutlineTab} slice="courseHome">
-                      <OutlineTab />
-                    </TabContainer>
-                  </DecodePageRoute>
-              )}
-              />
-              <Route
-                path={DECODE_ROUTES.LIVE}
-                element={(
-                  <DecodePageRoute>
-                    <TabContainer tab="lti_live" fetch={fetchLiveTab} slice="courseHome">
-                      <LiveTab />
-                    </TabContainer>
-                  </DecodePageRoute>
-                )}
-              />
-              <Route
-                path={DECODE_ROUTES.DATES}
-                element={(
-                  <DecodePageRoute>
-                    <TabContainer tab="dates" fetch={fetchDatesTab} slice="courseHome">
-                      <DatesTab />
-                    </TabContainer>
-                  </DecodePageRoute>
-                )}
-              />
-              <Route
-                path={DECODE_ROUTES.DISCUSSION}
-                element={(
-                  <DecodePageRoute>
-                    <TabContainer tab="discussion" fetch={fetchDiscussionTab} slice="courseHome">
-                      <DiscussionTab />
-                    </TabContainer>
-                  </DecodePageRoute>
-                )}
-              />
-              {DECODE_ROUTES.PROGRESS.map((route) => (
-                <Route
-                  key={route}
-                  path={route}
-                  element={(
-                    <DecodePageRoute>
-                      <TabContainer
-                        tab="progress"
-                        fetch={fetchProgressTab}
-                        slice="courseHome"
-                        isProgressTab
-                      >
-                        <ProgressTab />
-                      </TabContainer>
-                    </DecodePageRoute>
-                  )}
-                />
-              ))}
-              <Route
-                path={DECODE_ROUTES.COURSE_END}
-                element={(
-                  <DecodePageRoute>
-                    <TabContainer tab="courseware" fetch={fetchCourse} slice="courseware">
-                      <CourseExit />
-                    </TabContainer>
-                  </DecodePageRoute>
-                )}
-              />
-              {DECODE_ROUTES.COURSEWARE.map((route) => (
-                <Route
-                  key={route}
-                  path={route}
-                  element={(
-                    <DecodePageRoute>
-                      <CoursewareContainer />
-                    </DecodePageRoute>
-                  )}
-                />
-              ))}
-            </Routes>
-          </UserMessagesProvider>
-        </NoticesProvider>
-      </PathFixesProvider>
-    </AppProvider>,
-    document.getElementById('root'),
+  const root = createRoot(document.getElementById('root'));
+
+  root.render(
+    <StrictMode>
+      <AppProvider store={store}>
+        <Helmet>
+          <link rel="shortcut icon" href={getConfig().FAVICON_URL} type="image/x-icon" />
+        </Helmet>
+        <PathFixesProvider>
+          <NoticesProvider>
+            <UserMessagesProvider>
+              <div className="app-container">
+                <Routes>
+                  <Route path="*" element={<PageWrap><PageNotFound /></PageWrap>} />
+                  <Route path={ROUTES.UNSUBSCRIBE} element={<PageWrap><GoalUnsubscribe /></PageWrap>} />
+                  <Route path={ROUTES.REDIRECT} element={<PageWrap><CoursewareRedirectLandingPage /></PageWrap>} />
+                  <Route
+                    path={ROUTES.PREFERENCES_UNSUBSCRIBE}
+                    element={
+                      <PageWrap><PreferencesUnsubscribe /></PageWrap>
+                    }
+                  />
+                  <Route
+                    path={DECODE_ROUTES.ACCESS_DENIED}
+                    element={<DecodePageRoute><CourseAccessErrorPage /></DecodePageRoute>}
+                  />
+                  <Route
+                    path={DECODE_ROUTES.HOME}
+                    element={(
+                      <DecodePageRoute>
+                        <TabContainer tab="outline" fetch={fetchOutlineTab} slice="courseHome">
+                          <OutlineTab />
+                        </TabContainer>
+                      </DecodePageRoute>
+                    )}
+                  />
+                  <Route
+                    path={DECODE_ROUTES.LIVE}
+                    element={(
+                      <DecodePageRoute>
+                        <TabContainer tab="lti_live" fetch={fetchLiveTab} slice="courseHome">
+                          <LiveTab />
+                        </TabContainer>
+                      </DecodePageRoute>
+                    )}
+                  />
+                  <Route
+                    path={DECODE_ROUTES.DATES}
+                    element={(
+                      <DecodePageRoute>
+                        <TabContainer tab="dates" fetch={fetchDatesTab} slice="courseHome">
+                          <DatesTab />
+                        </TabContainer>
+                      </DecodePageRoute>
+                    )}
+                  />
+                  <Route
+                    path={DECODE_ROUTES.DISCUSSION}
+                    element={(
+                      <DecodePageRoute>
+                        <TabContainer tab="discussion" fetch={fetchDiscussionTab} slice="courseHome">
+                          <DiscussionTab />
+                        </TabContainer>
+                      </DecodePageRoute>
+                    )}
+                  />
+                  {DECODE_ROUTES.PROGRESS.map((route) => (
+                    <Route
+                      key={route}
+                      path={route}
+                      element={(
+                        <DecodePageRoute>
+                          <TabContainer
+                            tab="progress"
+                            fetch={fetchProgressTab}
+                            slice="courseHome"
+                            isProgressTab
+                          >
+                            <ProgressTab />
+                          </TabContainer>
+                        </DecodePageRoute>
+                      )}
+                    />
+                  ))}
+                  <Route
+                    path={DECODE_ROUTES.COURSE_END}
+                    element={(
+                      <DecodePageRoute>
+                        <TabContainer tab="courseware" fetch={fetchCourse} slice="courseware">
+                          <CourseExit />
+                        </TabContainer>
+                      </DecodePageRoute>
+                    )}
+                  />
+                  {DECODE_ROUTES.COURSEWARE.map((route) => (
+                    <Route
+                      key={route}
+                      path={route}
+                      element={(
+                        <DecodePageRoute>
+                          <CoursewareContainer />
+                        </DecodePageRoute>
+                      )}
+                    />
+                  ))}
+                </Routes>
+              </div>
+            </UserMessagesProvider>
+          </NoticesProvider>
+        </PathFixesProvider>
+      </AppProvider>
+    </StrictMode>,
   );
 });
 
 subscribe(APP_INIT_ERROR, (error) => {
-  ReactDOM.render(<ErrorPage message={error.message} />, document.getElementById('root'));
+  const root = createRoot(document.getElementById('root'));
+
+  root.render(
+    <StrictMode>
+      <ErrorPage message={error.message} />
+    </StrictMode>,
+  );
 });
 
 initialize({
@@ -154,6 +172,7 @@ initialize({
         CREDIT_HELP_LINK_URL: process.env.CREDIT_HELP_LINK_URL || null,
         DISCUSSIONS_MFE_BASE_URL: process.env.DISCUSSIONS_MFE_BASE_URL || null,
         ENTERPRISE_LEARNER_PORTAL_HOSTNAME: process.env.ENTERPRISE_LEARNER_PORTAL_HOSTNAME || null,
+        ENTERPRISE_LEARNER_PORTAL_URL: process.env.ENTERPRISE_LEARNER_PORTAL_URL || null,
         ENABLE_JUMPNAV: process.env.ENABLE_JUMPNAV || null,
         ENABLE_NOTICES: process.env.ENABLE_NOTICES || null,
         INSIGHTS_BASE_URL: process.env.INSIGHTS_BASE_URL || null,
@@ -174,6 +193,8 @@ initialize({
         PROCTORED_EXAM_RULES_URL: process.env.PROCTORED_EXAM_RULES_URL || null,
         CHAT_RESPONSE_URL: process.env.CHAT_RESPONSE_URL || null,
         PRIVACY_POLICY_URL: process.env.PRIVACY_POLICY_URL || null,
+        SHOW_UNGRADED_ASSIGNMENT_PROGRESS: process.env.SHOW_UNGRADED_ASSIGNMENT_PROGRESS || false,
+        ENABLE_XPERT_AUDIT: process.env.ENABLE_XPERT_AUDIT || false,
       }, 'LearnerAppConfig');
     },
   },

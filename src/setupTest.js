@@ -1,5 +1,4 @@
 import '@testing-library/jest-dom';
-import '@testing-library/jest-dom/extend-expect';
 import './courseware/data/__factories__';
 import './course-home/data/__factories__';
 import { getConfig, mergeConfig } from '@edx/frontend-platform';
@@ -60,6 +59,18 @@ const supressWarningBlock = (callback) => {
   console.warn = originalConsoleWarning;
 };
 /* eslint-enable no-console */
+
+// Mocks for HTML Dialogs behavior. */
+// jsdom does not support HTML Dialogs yet: https://github.com/jsdom/jsdom/issues/3294
+HTMLDialogElement.prototype.show = jest.fn();
+HTMLDialogElement.prototype.showModal = jest.fn(function mock() {
+  const onShowModal = new CustomEvent('show_modal');
+  this.dispatchEvent(onShowModal);
+});
+HTMLDialogElement.prototype.close = jest.fn(function mock() {
+  const onClose = new CustomEvent('close');
+  this.dispatchEvent(onClose);
+});
 
 // Mock Intersection Observer which is unavailable in the context of a test.
 global.IntersectionObserver = jest.fn(function mockIntersectionObserver() {
@@ -168,6 +179,7 @@ export async function initializeTestStore(options = {}, overrideStore = true) {
   const provider = options?.provider || 'legacy';
   const enableNavigationSidebar = options.enableNavigationSidebar || { enable_navigation_sidebar: true };
   const alwaysOpenAuxiliarySidebar = options.alwaysOpenAuxiliarySidebar || { always_open_auxiliary_sidebar: true };
+  const enableCompletionTracking = options.enableCompletionTracking || { enable_completion_tracking: true };
 
   axiosMock.onGet(courseMetadataUrl).reply(200, courseMetadata);
   axiosMock.onGet(courseHomeMetadataUrl).reply(200, courseHomeMetadata);
@@ -176,6 +188,7 @@ export async function initializeTestStore(options = {}, overrideStore = true) {
   axiosMock.onGet(coursewareSidebarSettingsUrl).reply(200, {
     ...enableNavigationSidebar,
     ...alwaysOpenAuxiliarySidebar,
+    ...enableCompletionTracking,
   });
 
   axiosMock.onGet(outlineSidebarUrl).reply(200, {

@@ -1,23 +1,22 @@
 import { useState } from 'react';
-import { useSelector } from 'react-redux';
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
-import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
+import { useIntl } from '@edx/frontend-platform/i18n';
 import { Collapsible } from '@openedx/paragon';
 
 import courseOutlineMessages from '@src/course-home/outline-tab/messages';
-import { getCourseOutline, getSequenceId } from '@src/courseware/data/selectors';
+import { useCourseOutlineSidebar } from '../hooks';
 import CompletionIcon from './CompletionIcon';
 import SidebarUnit from './SidebarUnit';
 import { UNIT_ICON_TYPES } from './UnitIcon';
 
 const SidebarSequence = ({
-  intl,
   courseId,
   defaultOpen,
   sequence,
   activeUnitId,
 }) => {
+  const intl = useIntl();
   const {
     id,
     complete,
@@ -29,23 +28,24 @@ const SidebarSequence = ({
   } = sequence;
 
   const [open, setOpen] = useState(defaultOpen);
-  const { units = {} } = useSelector(getCourseOutline);
-  const activeSequenceId = useSelector(getSequenceId);
+  const { activeSequenceId, units, isEnabledCompletionTracking } = useCourseOutlineSidebar();
   const isActiveSequence = id === activeSequenceId;
 
   const sectionTitle = (
     <>
       <div className="col-auto p-0" style={{ fontSize: '1.1rem' }}>
-        <CompletionIcon completionStat={completionStat} />
+        <CompletionIcon completionStat={completionStat} enabled={isEnabledCompletionTracking} />
       </div>
       <div className="col-9 d-flex flex-column flex-grow-1 ml-3 mr-auto p-0 text-left">
         <span className="align-middle text-dark-500">{title}</span>
         {specialExamInfo && <span className="align-middle small text-muted">{specialExamInfo}</span>}
-        <span className="sr-only">
-          , {intl.formatMessage(complete
-          ? courseOutlineMessages.completedAssignment
-          : courseOutlineMessages.incompleteAssignment)}
-        </span>
+        {isEnabledCompletionTracking && (
+          <span className="sr-only">
+            , {intl.formatMessage(complete
+            ? courseOutlineMessages.completedAssignment
+            : courseOutlineMessages.incompleteAssignment)}
+          </span>
+        )}
       </div>
     </>
   );
@@ -71,6 +71,7 @@ const SidebarSequence = ({
               activeUnitId={activeUnitId}
               isFirst={index === 0}
               isLocked={type === UNIT_ICON_TYPES.lock}
+              isCompletionTrackingEnabled={isEnabledCompletionTracking}
             />
           ))}
         </ol>
@@ -80,7 +81,6 @@ const SidebarSequence = ({
 };
 
 SidebarSequence.propTypes = {
-  intl: intlShape.isRequired,
   courseId: PropTypes.string.isRequired,
   defaultOpen: PropTypes.bool.isRequired,
   sequence: PropTypes.shape({
@@ -98,4 +98,4 @@ SidebarSequence.propTypes = {
   activeUnitId: PropTypes.string.isRequired,
 };
 
-export default injectIntl(SidebarSequence);
+export default SidebarSequence;

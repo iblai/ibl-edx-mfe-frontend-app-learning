@@ -1,6 +1,6 @@
 import React from 'react';
 import { Factory } from 'rosie';
-import { getConfig } from '@edx/frontend-platform';
+import { getConfig, setConfig } from '@edx/frontend-platform';
 import { sendTrackEvent } from '@edx/frontend-platform/analytics';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { breakpoints } from '@openedx/paragon';
@@ -111,7 +111,7 @@ describe('Progress Tab', () => {
       await fetchAndRender();
       sendTrackEvent.mockClear();
 
-      const outlineTabLink = screen.getAllByRole('link', { name: 'Course Outline' });
+      const outlineTabLink = screen.getAllByRole('link', { name: 'Course outline' });
       fireEvent.click(outlineTabLink[1]); // outlineTabLink[0] corresponds to the link in the DetailedGrades component
 
       expect(sendTrackEvent).toHaveBeenCalledTimes(1);
@@ -471,9 +471,12 @@ describe('Progress Tab', () => {
       await fetchAndRender();
       expect(screen.getByText('limited feature')).toBeInTheDocument();
       expect(screen.getByText('Unlock to work towards a certificate.')).toBeInTheDocument();
-      expect(screen.queryAllByText('You have limited access to graded assignments as part of the audit track in this course.')).toHaveLength(2);
+      expect(screen.queryAllByText(
+        'You have limited access to graded assignments as part of the audit track in this course.',
+        { exact: false },
+      )).toHaveLength(2);
 
-      expect(screen.queryAllByTestId('blocked-icon')).toHaveLength(4);
+      expect(screen.queryAllByTestId('locked-icon')).toHaveLength(4);
     });
 
     it('does not render subsections for which showGrades is false', async () => {
@@ -544,6 +547,111 @@ describe('Progress Tab', () => {
 
       await fetchAndRender();
       expect(screen.getByText('Grades & Credit')).toBeInTheDocument();
+    });
+
+    it('does not render ungraded subsections when SHOW_UNGRADED_ASSIGNMENT_PROGRESS is false', async () => {
+      // The second assignment has has_graded_assignment set to false, so it should not be shown.
+      setTabData({
+        section_scores: [
+          {
+            display_name: 'First section',
+            subsections: [
+              {
+                assignment_type: 'Homework',
+                block_key: 'block-v1:edX+DemoX+Demo_Course+type@sequential+block@12345',
+                display_name: 'First subsection',
+                learner_has_access: true,
+                has_graded_assignment: true,
+                num_points_earned: 1,
+                num_points_possible: 2,
+                percent_graded: 1.0,
+                show_correctness: 'always',
+                show_grades: true,
+                url: 'http://learning.edx.org/course/course-v1:edX+Test+run/first_subsection',
+              },
+            ],
+          },
+          {
+            display_name: 'Second section',
+            subsections: [
+              {
+                assignment_type: 'Homework',
+                display_name: 'Second subsection',
+                learner_has_access: true,
+                has_graded_assignment: false,
+                num_points_earned: 1,
+                num_points_possible: 1,
+                percent_graded: 1.0,
+                show_correctness: 'always',
+                show_grades: true,
+                url: 'http://learning.edx.org/course/course-v1:edX+Test+run/second_subsection',
+              },
+            ],
+          },
+        ],
+      });
+
+      await fetchAndRender();
+      expect(screen.getByText('First subsection')).toBeInTheDocument();
+      expect(screen.queryByText('Second subsection')).not.toBeInTheDocument();
+    });
+
+    it('renders both graded and ungraded subsections when SHOW_UNGRADED_ASSIGNMENT_PROGRESS is true', async () => {
+      // The second assignment has has_graded_assignment set to false.
+      setConfig({
+        ...getConfig(),
+        SHOW_UNGRADED_ASSIGNMENT_PROGRESS: true,
+      });
+
+      setTabData({
+        section_scores: [
+          {
+            display_name: 'First section',
+            subsections: [
+              {
+                assignment_type: 'Homework',
+                block_key: 'block-v1:edX+DemoX+Demo_Course+type@sequential+block@12345',
+                display_name: 'First subsection',
+                learner_has_access: true,
+                has_graded_assignment: true,
+                num_points_earned: 1,
+                num_points_possible: 2,
+                percent_graded: 1.0,
+                show_correctness: 'always',
+                show_grades: true,
+                url: 'http://learning.edx.org/course/course-v1:edX+Test+run/first_subsection',
+              },
+            ],
+          },
+          {
+            display_name: 'Second section',
+            subsections: [
+              {
+                assignment_type: 'Homework',
+                display_name: 'Second subsection',
+                learner_has_access: true,
+                has_graded_assignment: false,
+                num_points_earned: 1,
+                num_points_possible: 1,
+                percent_graded: 1.0,
+                show_correctness: 'always',
+                show_grades: true,
+                url: 'http://learning.edx.org/course/course-v1:edX+Test+run/second_subsection',
+              },
+            ],
+          },
+        ],
+      });
+
+      await fetchAndRender();
+      expect(screen.getByText('First subsection')).toBeInTheDocument();
+      expect(screen.getByText('Second subsection')).toBeInTheDocument();
+
+      // reset config for other tests
+      setConfig({
+        ...getConfig(),
+        SHOW_UNGRADED_ASSIGNMENT_PROGRESS: false,
+      });
     });
   });
 
@@ -788,7 +896,7 @@ describe('Progress Tab', () => {
       sendTrackEvent.mockClear();
       expect(screen.getByText('Detailed grades')).toBeInTheDocument();
 
-      const outlineLink = screen.getAllByRole('link', { name: 'Course Outline' })[0];
+      const outlineLink = screen.getAllByRole('link', { name: 'Course outline' })[0];
       fireEvent.click(outlineLink);
 
       expect(sendTrackEvent).toHaveBeenCalledTimes(1);
@@ -809,7 +917,7 @@ describe('Progress Tab', () => {
 
       // Open the problem score drawer
       fireEvent.click(problemScoreDrawerToggle);
-      expect(screen.getByText('Problem Scores:')).toBeInTheDocument();
+      expect(screen.getAllByText('Graded Scores:').length).toBeGreaterThan(1);
       expect(screen.getAllByText('0/1')).toHaveLength(3);
     });
 
@@ -820,6 +928,14 @@ describe('Progress Tab', () => {
       await fetchAndRender();
       expect(screen.getByText('Detailed grades')).toBeInTheDocument();
       expect(screen.getByText('You currently have no graded problem scores.')).toBeInTheDocument();
+    });
+
+    it('renders Detailed Grades table when section scores are populated', async () => {
+      await fetchAndRender();
+      expect(screen.getByText('Detailed grades')).toBeInTheDocument();
+
+      expect(screen.getByText('First subsection'));
+      expect(screen.getByText('Second subsection'));
     });
   });
 

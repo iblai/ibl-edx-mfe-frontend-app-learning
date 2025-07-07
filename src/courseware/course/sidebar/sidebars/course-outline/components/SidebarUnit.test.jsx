@@ -6,7 +6,9 @@ import { IntlProvider } from '@edx/frontend-platform/i18n';
 import { sendTrackEvent, sendTrackingLogEvent } from '@edx/frontend-platform/analytics';
 
 import { initializeMockApp, initializeTestStore } from '@src/setupTest';
+import SidebarContext from '../../../SidebarContext';
 import SidebarUnit from './SidebarUnit';
+import { ID } from '../constants';
 
 jest.mock('@edx/frontend-platform/analytics', () => ({
   sendTrackEvent: jest.fn(),
@@ -19,6 +21,7 @@ describe('<SidebarUnit />', () => {
   let store = {};
   let unit;
   let sequenceId;
+  let defaultSidebarContext;
 
   const initTestStore = async (options) => {
     store = await initializeTestStore(options);
@@ -26,24 +29,32 @@ describe('<SidebarUnit />', () => {
     [sequenceId] = Object.keys(state.courseware.courseOutline.sequences);
     const sequence = state.courseware.courseOutline.sequences[sequenceId];
     unit = state.courseware.courseOutline.units[sequence.unitIds[0]];
+
+    defaultSidebarContext = {
+      toggleSidebar: jest.fn(),
+      currentSidebar: ID,
+    };
   };
 
-  function renderWithProvider(props = {}) {
+  function renderWithProvider(props = {}, sidebarContext = defaultSidebarContext, pathname = '/course') {
     const { container } = render(
       <AppProvider store={store} wrapWithRouter={false}>
         <IntlProvider locale="en">
-          <MemoryRouter>
-            <SidebarUnit
-              isFirst
-              id={unit.id}
-              courseId="course123"
-              sequenceId={sequenceId}
-              unit={{ ...unit, icon: 'video', isLocked: false }}
-              isActive={false}
-              activeUnitId={unit.id}
-              {...props}
-            />
-          </MemoryRouter>
+          <SidebarContext.Provider value={{ ...sidebarContext }}>
+            <MemoryRouter initialEntries={[{ pathname }]}>
+              <SidebarUnit
+                isFirst
+                id={unit.id}
+                courseId="course123"
+                sequenceId={sequenceId}
+                unit={{ ...unit, icon: 'video', isLocked: false }}
+                isActive={false}
+                activeUnitId={unit.id}
+                isCompletionTrackingEnabled
+                {...props}
+              />
+            </MemoryRouter>
+          </SidebarContext.Provider>
         </IntlProvider>
       </AppProvider>,
     );
@@ -58,7 +69,7 @@ describe('<SidebarUnit />', () => {
     expect(container.querySelector('.text-success')).not.toBeInTheDocument();
   });
 
-  it('renders correctly when unit is complete', async () => {
+  it('renders correctly when unit is complete and tracking enabled', async () => {
     await initTestStore();
     const container = renderWithProvider({ unit: { ...unit, complete: true } });
 
@@ -87,21 +98,75 @@ describe('<SidebarUnit />', () => {
     expect(screen.getByText(unit.title)).toBeInTheDocument();
   });
 
-  it('sends log event correctly when unit is clicked', async () => {
-    await initTestStore();
-    renderWithProvider({ unit: { ...unit } });
-    const logData = {
-      id: unit.id,
-      current_tab: 1,
-      tab_count: 1,
-      target_id: unit.id,
-      target_tab: 1,
-      widget_placement: 'left',
-    };
+  describe('When a unit is clicked', () => {
+    it('sends log event correctly', async () => {
+      const user = userEvent.setup();
+      await initTestStore();
+      renderWithProvider({ unit: { ...unit } });
+      const logData = {
+        id: unit.id,
+        current_tab: 1,
+        tab_count: 1,
+        target_id: unit.id,
+        target_tab: 1,
+        widget_placement: 'left',
+      };
 
-    userEvent.click(screen.getByText(unit.title));
+      await user.click(screen.getByText(unit.title));
 
-    expect(sendTrackEvent).toHaveBeenCalledWith('edx.ui.lms.sequence.tab_selected', logData);
-    expect(sendTrackingLogEvent).toHaveBeenCalledWith('edx.ui.lms.sequence.tab_selected', logData);
+      expect(sendTrackEvent).toHaveBeenCalledWith('edx.ui.lms.sequence.tab_selected', logData);
+      expect(sendTrackingLogEvent).toHaveBeenCalledWith('edx.ui.lms.sequence.tab_selected', logData);
+    });
+
+    it('leaves sidebar open in desktop mode', async () => {
+      const user = userEvent.setup();
+      await initTestStore();
+      renderWithProvider({ unit: { ...unit } });
+      await user.click(screen.getByText(unit.title));
+
+      expect(defaultSidebarContext.toggleSidebar).not.toHaveBeenCalled();
+      expect(window.sessionStorage.getItem('hideCourseOutlineSidebar')).toBeNull();
+    });
+
+    it('closes sidebar on mobile devices', async () => {
+      const user = userEvent.setup();
+      await initTestStore();
+      renderWithProvider({ unit: { ...unit } }, { ...defaultSidebarContext, shouldDisplayFullScreen: true });
+      await user.click(screen.getByText(unit.title));
+
+      expect(defaultSidebarContext.toggleSidebar).toHaveBeenCalledTimes(1);
+      expect(defaultSidebarContext.toggleSidebar).toHaveBeenCalledWith(null);
+      expect(window.sessionStorage.getItem('hideCourseOutlineSidebar')).toEqual('true');
+    });
+  });
+
+  describe('UnitLinkWrapper', () => {
+    describe('course in preview mode', () => {
+      beforeEach(async () => {
+        await initTestStore();
+        renderWithProvider({ unit: { ...unit } }, { ...defaultSidebarContext, shouldDisplayFullScreen: true }, '/preview/course');
+      });
+
+      it('href includes /preview', async () => {
+        const unitLink = screen.getByText(unit.title).closest('a');
+        const linkHref = unitLink.getAttribute('href');
+
+        expect(linkHref.includes('/preview/')).toBeTruthy();
+      });
+    });
+
+    describe('course in live mode', () => {
+      beforeEach(async () => {
+        await initTestStore();
+        renderWithProvider({ unit: { ...unit } }, { ...defaultSidebarContext, shouldDisplayFullScreen: true });
+      });
+
+      it('href does not include /preview/', async () => {
+        const unitLink = screen.getByText(unit.title).closest('a');
+        const linkHref = unitLink.getAttribute('href');
+
+        expect(linkHref.includes('/preview/')).toBeFalsy();
+      });
+    });
   });
 });

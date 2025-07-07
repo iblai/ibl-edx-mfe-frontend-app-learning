@@ -3,9 +3,9 @@ import { useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
 
 import { Xpert } from '@edx/frontend-lib-learning-assistant';
-import { injectIntl } from '@edx/frontend-platform/i18n';
+import { getConfig } from '@edx/frontend-platform';
 
-import { VERIFIED_MODES } from '@src/constants';
+import { ALLOW_UPSELL_MODES, VERIFIED_MODES } from '@src/constants';
 import { useModel } from '../../../generic/model-store';
 
 const Chat = ({
@@ -21,43 +21,48 @@ const Chat = ({
   } = useSelector(state => state.specialExams);
   const course = useModel('coursewareMeta', courseId);
 
-  const hasVerifiedEnrollment = (
-    enrollmentMode !== null
-    && enrollmentMode !== undefined
-    && VERIFIED_MODES.includes(enrollmentMode)
+  // If is disabled or taking an exam, we don't show the chat.
+  if (!enabled || activeAttempt?.attempt_id || exam?.id) { return null; }
+
+  // If is not staff and doesn't have an enrollment, we don't show the chat.
+  if (!isStaff && !enrollmentMode) { return null; }
+
+  const verifiedMode = VERIFIED_MODES.includes(enrollmentMode); // Enrollment verified
+  const auditMode = (
+    !isStaff
+    && !verifiedMode
+    && ALLOW_UPSELL_MODES.includes(enrollmentMode) // Can upgrade course
+    && getConfig().ENABLE_XPERT_AUDIT
   );
+  // If user has no access, we don't show the chat.
+  if (!isStaff && !(verifiedMode || auditMode)) { return null; }
 
-  const validDates = () => {
-    const date = new Date();
-    const utcDate = date.toISOString();
+  // Date validation
+  const {
+    accessExpiration,
+    start,
+    end,
+  } = course;
 
-    const startDate = course.start || utcDate;
-    const endDate = course.end || utcDate;
-
-    return (
-      startDate <= utcDate
-      && utcDate <= endDate
-    );
-  };
-
-  const shouldDisplayChat = (
-    enabled
-    && (hasVerifiedEnrollment || isStaff) // display only to verified learners or staff
-    && validDates()
-    // it is necessary to check both whether the user is in an exam, and whether or not they are viewing an exam
-    // this will prevent the learner from interacting with the tool at any point of the exam flow, even at the
-    // entrance interstitial.
-    && !(activeAttempt?.attempt_id || exam?.id)
+  const utcDate = (new Date()).toISOString();
+  const expiration = accessExpiration?.expirationDate || utcDate;
+  const validDate = (
+    (start ? start <= utcDate : true)
+    && (end ? end >= utcDate : true)
+    && (auditMode ? expiration >= utcDate : true)
   );
+  // If date is invalid, we don't show the chat.
+  if (!validDate) { return null; }
 
-  return (
-    <>
-      {/* Use a portal to ensure that component overlay does not compete with learning MFE styles. */}
-      {shouldDisplayChat && (createPortal(
-        <Xpert courseId={courseId} contentToolsEnabled={contentToolsEnabled} unitId={unitId} />,
-        document.body,
-      ))}
-    </>
+  // Use a portal to ensure that component overlay does not compete with learning MFE styles.
+  return createPortal(
+    <Xpert
+      courseId={courseId}
+      contentToolsEnabled={contentToolsEnabled}
+      unitId={unitId}
+      isUpgradeEligible={auditMode}
+    />,
+    document.body,
   );
 };
 
@@ -74,4 +79,4 @@ Chat.defaultProps = {
   enrollmentMode: null,
 };
 
-export default injectIntl(Chat);
+export default Chat;

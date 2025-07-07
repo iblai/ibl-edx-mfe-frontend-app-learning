@@ -289,9 +289,17 @@ export async function getProgressTabData(courseId, targetUserId) {
 }
 
 export async function getProctoringInfoData(courseId, username) {
-  let url = `${getConfig().LMS_BASE_URL}/api/edx_proctoring/v1/user_onboarding/status?is_learning_mfe=true&course_id=${encodeURIComponent(courseId)}`;
-  if (username) {
-    url += `&username=${encodeURIComponent(username)}`;
+  let url;
+  if (!getConfig().EXAMS_BASE_URL) {
+    url = `${getConfig().LMS_BASE_URL}/api/edx_proctoring/v1/user_onboarding/status?is_learning_mfe=true&course_id=${encodeURIComponent(courseId)}`;
+    if (username) {
+      url += `&username=${encodeURIComponent(username)}`;
+    }
+  } else {
+    url = `${getConfig().EXAMS_BASE_URL}/api/v1/student/course_id/${encodeURIComponent(courseId)}/onboarding`;
+    if (username) {
+      url += `?username=${encodeURIComponent(username)}`;
+    }
   }
   try {
     const { data } = await getAuthenticatedHttpClient().get(url);
@@ -359,7 +367,6 @@ export async function getOutlineTabData(courseId) {
   } = tabData;
 
   const accessExpiration = camelCaseObject(data.access_expiration);
-  const canShowUpgradeSock = data.can_show_upgrade_sock;
   const certData = camelCaseObject(data.cert_data);
   const courseBlocks = data.course_blocks ? normalizeOutlineBlocks(courseId, data.course_blocks.blocks) : {};
   const courseGoals = camelCaseObject(data.course_goals);
@@ -381,7 +388,6 @@ export async function getOutlineTabData(courseId) {
 
   return {
     accessExpiration,
-    canShowUpgradeSock,
     certData,
     courseBlocks,
     courseGoals,
@@ -449,7 +455,7 @@ export async function unsubscribeFromCourseGoal(token) {
     .then(res => camelCaseObject(res));
 }
 
-export async function getCoursewareSearchEnabledFlag(courseId) {
+export async function getCoursewareSearchEnabled(courseId) {
   const url = new URL(`${getConfig().LMS_BASE_URL}/courses/${courseId}/courseware-search/enabled/`);
   const { data } = await getAuthenticatedHttpClient().get(url.href);
   return { enabled: data.enabled || false };

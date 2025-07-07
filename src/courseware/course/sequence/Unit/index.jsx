@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 
 import { AppContext } from '@edx/frontend-platform/react';
 import { useIntl } from '@edx/frontend-platform/i18n';
@@ -8,7 +8,6 @@ import { useIntl } from '@edx/frontend-platform/i18n';
 import { useModel } from '@src/generic/model-store';
 import { usePluginsCallback } from '@src/generic/plugin-store';
 
-import BookmarkButton from '../../bookmark/BookmarkButton';
 import messages from '../messages';
 import ContentIFrame from './ContentIFrame';
 import UnitSuspense from './UnitSuspense';
@@ -22,15 +21,19 @@ const Unit = ({
   format,
   onLoaded,
   id,
+  isOriginalUserStaff,
+  isEnabledOutlineSidebar,
+  renderUnitNavigation,
 }) => {
   const { formatMessage } = useIntl();
   const [searchParams] = useSearchParams();
+  const { pathname } = useLocation();
   const { authenticatedUser } = React.useContext(AppContext);
   const examAccess = useExamAccess({ id });
   const shouldDisplayHonorCode = useShouldDisplayHonorCode({ courseId, id });
   const unit = useModel(modelKeys.units, id);
-  const isProcessing = unit.bookmarkedUpdateState === 'loading';
   const view = authenticatedUser ? views.student : views.public;
+  const shouldDisplayUnitPreview = pathname.startsWith('/preview') && isOriginalUserStaff;
 
   const getUrl = usePluginsCallback('getIFrameUrl', () => getIFrameUrl({
     id,
@@ -38,22 +41,14 @@ const Unit = ({
     format,
     examAccess,
     jumpToId: searchParams.get('jumpToId'),
+    preview: shouldDisplayUnitPreview ? '1' : '0',
   }));
 
   const iframeUrl = getUrl();
 
   return (
     <div className="unit">
-      <div className="mb-0">
-        <h3 className="h3">{unit.title}</h3>
-        <UnitTitleSlot courseId={courseId} unitId={id} unitTitle={unit.title} />
-      </div>
-      <h2 className="sr-only">{formatMessage(messages.headerPlaceholder)}</h2>
-      <BookmarkButton
-        unitId={unit.id}
-        isBookmarked={unit.bookmarked}
-        isProcessing={isProcessing}
-      />
+      <UnitTitleSlot unitId={id} {...{ unit, isEnabledOutlineSidebar, renderUnitNavigation }} />
       <UnitSuspense {...{ courseId, id }} />
       <ContentIFrame
         elementId="unit-iframe"
@@ -74,6 +69,9 @@ Unit.propTypes = {
   format: PropTypes.string,
   id: PropTypes.string.isRequired,
   onLoaded: PropTypes.func,
+  isOriginalUserStaff: PropTypes.bool.isRequired,
+  isEnabledOutlineSidebar: PropTypes.bool.isRequired,
+  renderUnitNavigation: PropTypes.func.isRequired,
 };
 
 Unit.defaultProps = {

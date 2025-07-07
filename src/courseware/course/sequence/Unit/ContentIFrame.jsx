@@ -3,10 +3,9 @@ import React from 'react';
 
 import { ErrorPage } from '@edx/frontend-platform/react';
 import { StrictDict } from '@edx/react-unit-test-utils';
-import { ModalDialog, Modal } from '@openedx/paragon';
-import { PluginSlot } from '@openedx/frontend-plugin-framework';
+import { ModalDialog } from '@openedx/paragon';
+import { ContentIFrameLoaderSlot } from '../../../../plugin-slots/ContentIFrameLoaderSlot';
 
-import PageLoading from '@src/generic/PageLoading';
 import * as hooks from './hooks';
 
 /**
@@ -20,7 +19,7 @@ import * as hooks from './hooks';
  * Changes to it should be vetted by them (security@edx.org).
  */
 export const IFRAME_FEATURE_POLICY = (
-  'microphone *; camera *; midi *; geolocation *; encrypted-media *, clipboard-write *'
+  'microphone *; camera *; midi *; geolocation *; encrypted-media *; clipboard-write *; autoplay *'
 );
 
 export const testIDs = StrictDict({
@@ -66,64 +65,40 @@ const ContentIFrame = ({
     onLoad: handleIFrameLoad,
   };
 
-  let modalContent;
-  if (modalOptions.isOpen) {
-    modalContent = modalOptions.body
-      ? <div className="unit-modal">{ modalOptions.body }</div>
-      : (
-        <iframe
-          title={modalOptions.title}
-          allow={IFRAME_FEATURE_POLICY}
-          frameBorder="0"
-          src={modalOptions.url}
-          style={{ width: '100%', height: modalOptions.height }}
-        />
-      );
-  }
-
   return (
     <>
       {(shouldShowContent && !hasLoaded) && (
-        showError ? <ErrorPage /> : (
-          <PluginSlot
-            id="content_iframe_loader_slot"
-            pluginProps={{
-              defaultLoaderComponent: <PageLoading srMessage={loadingMessage} />,
-              courseId,
-            }}
-          >
-            <PageLoading srMessage={loadingMessage} />
-          </PluginSlot>
-        )
+        showError ? <ErrorPage /> : <ContentIFrameLoaderSlot courseId={courseId} loadingMessage={loadingMessage} />
       )}
       {shouldShowContent && (
         <div className="unit-iframe-wrapper">
           <iframe title={title} {...contentIFrameProps} data-testid={testIDs.contentIFrame} />
         </div>
       )}
-      {modalOptions.isOpen && (modalOptions.isFullscreen
-        ? (
+      {modalOptions.isOpen
+          && (
           <ModalDialog
             dialogClassName="modal-lti"
             onClose={handleModalClose}
-            size="fullscreen"
+            size={modalOptions.isFullscreen ? 'fullscreen' : 'md'}
             isOpen
             hasCloseButton={false}
           >
             <ModalDialog.Body className={modalOptions.modalBodyClassName}>
-              {modalContent}
+              {modalOptions.body
+                ? <div className="unit-modal">{ modalOptions.body }</div>
+                : (
+                  <iframe
+                    title={modalOptions.title}
+                    allow={IFRAME_FEATURE_POLICY}
+                    frameBorder="0"
+                    src={modalOptions.url}
+                    style={{ width: '100%', height: modalOptions.height }}
+                  />
+                )}
             </ModalDialog.Body>
           </ModalDialog>
-
-        ) : (
-          <Modal
-            body={modalContent}
-            dialogClassName="modal-lti"
-            onClose={handleModalClose}
-            open
-          />
-        )
-      )}
+          )}
     </>
   );
 };

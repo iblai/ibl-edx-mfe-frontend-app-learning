@@ -1,17 +1,18 @@
 import React, { useEffect } from 'react';
-import { LearningHeader as Header } from '@edx/frontend-component-header';
 import { useParams, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
-import FooterSlot from '@openedx/frontend-slot-footer';
+import { useIntl } from '@edx/frontend-platform/i18n';
+import { FooterSlot } from '@edx/frontend-component-footer';
 import { LOADED, LOADING } from '@src/constants';
+import HeaderSlot from '../plugin-slots/HeaderSlot';
 import useActiveEnterpriseAlert from '../alerts/active-enteprise-alert';
 import { AlertList } from './user-messages';
 import { fetchDiscussionTab } from '../course-home/data/thunks';
 import PageLoading from './PageLoading';
 import messages from '../tab-page/messages';
 
-const CourseAccessErrorPage = ({ intl }) => {
+const CourseAccessErrorPage = () => {
+  const intl = useIntl();
   const { courseId } = useParams();
 
   const dispatch = useDispatch();
@@ -28,7 +29,7 @@ const CourseAccessErrorPage = ({ intl }) => {
   if (courseStatus === LOADING) {
     return (
       <>
-        <Header />
+        <HeaderSlot />
         <PageLoading
           srMessage={intl.formatMessage(messages.loading)}
         />
@@ -41,7 +42,7 @@ const CourseAccessErrorPage = ({ intl }) => {
   }
   return (
     <>
-      <Header />
+      <HeaderSlot />
       <main id="main-content" className="container my-5 text-center" data-testid="access-denied-main">
         <AlertList
           topic="outline"
@@ -56,8 +57,4 @@ const CourseAccessErrorPage = ({ intl }) => {
   );
 };
 
-CourseAccessErrorPage.propTypes = {
-  intl: intlShape.isRequired,
-};
-
-export default injectIntl(CourseAccessErrorPage);
+export default CourseAccessErrorPage;

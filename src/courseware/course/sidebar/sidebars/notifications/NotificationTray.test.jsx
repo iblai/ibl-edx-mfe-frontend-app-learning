@@ -91,27 +91,7 @@ describe('NotificationTray', () => {
         <NotificationTray />
       </SidebarContext.Provider>,
     );
-    expect(screen.getByTestId('notification_tray_slot')).toBeInTheDocument();
-  });
-
-  it('renders upgrade card', async () => {
-    await fetchAndRender(
-      <SidebarContext.Provider value={{
-        currentSidebar: ID,
-        courseId,
-      }}
-      >
-        <NotificationTray />
-      </SidebarContext.Provider>,
-    );
-
-    expect(document.querySelector('.upgrade-notification')).toBeInTheDocument();
-
-    expect(screen.getByRole('link', { name: 'Upgrade for $149' }))
-      .toBeInTheDocument();
-    expect(screen.queryByText('You have no new notifications at this time.'))
-      .not
-      .toBeInTheDocument();
+    expect(screen.getByTestId('org.openedx.frontend.learning.notification_tray.v1')).toBeInTheDocument();
   });
 
   it('renders no notifications message if no verified mode', async () => {

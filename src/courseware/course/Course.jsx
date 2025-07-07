@@ -3,21 +3,21 @@ import PropTypes from 'prop-types';
 import { Helmet } from 'react-helmet';
 import { useDispatch, useSelector } from 'react-redux';
 import { getConfig } from '@edx/frontend-platform';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { breakpoints, useWindowSize } from '@openedx/paragon';
 
 import { AlertList } from '@src/generic/user-messages';
 import { useModel } from '@src/generic/model-store';
 import { getCoursewareOutlineSidebarSettings } from '../data/selectors';
-import { Trigger as CourseOutlineTrigger } from './sidebar/sidebars/course-outline';
 import Chat from './chat/Chat';
 import SidebarProvider from './sidebar/SidebarContextProvider';
-import SidebarTriggers from './sidebar/SidebarTriggers';
 import NewSidebarProvider from './new-sidebar/SidebarContextProvider';
-import NewSidebarTriggers from './new-sidebar/SidebarTriggers';
+import { NotificationsDiscussionsSidebarTriggerSlot } from '../../plugin-slots/NotificationsDiscussionsSidebarTriggerSlot';
 import { CelebrationModal, shouldCelebrateOnSectionLoad, WeeklyGoalCelebrationModal } from './celebration';
-import CourseBreadcrumbs from './CourseBreadcrumbs';
 import ContentTools from './content-tools';
 import Sequence from './sequence';
+import { CourseOutlineMobileSidebarTriggerSlot } from '../../plugin-slots/CourseOutlineMobileSidebarTriggerSlot';
+import { CourseBreadcrumbsSlot } from '../../plugin-slots/CourseBreadcrumbsSlot';
 
 const Course = ({
   courseId,
@@ -33,11 +33,19 @@ const Course = ({
     celebrations,
     isStaff,
     isNewDiscussionSidebarViewEnabled,
+    originalUserIsStaff,
   } = useModel('courseHomeMeta', courseId);
   const sequence = useModel('sequences', sequenceId);
   const section = useModel('sections', sequence ? sequence.sectionId : null);
   const { enableNavigationSidebar } = useSelector(getCoursewareOutlineSidebarSettings);
   const navigationDisabled = enableNavigationSidebar || (sequence?.navigationDisabled ?? false);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  if (!originalUserIsStaff && pathname.startsWith('/preview')) {
+    const courseUrl = pathname.replace('/preview', '');
+    navigate(courseUrl, { replace: true });
+  }
 
   const pageTitleBreadCrumbs = [
     sequence,
@@ -89,7 +97,7 @@ const Course = ({
       <div className="position-relative d-flex align-items-xl-center mb-4 mt-1 flex-column flex-xl-row">
         {navigationDisabled || (
         <>
-          <CourseBreadcrumbs
+          <CourseBreadcrumbsSlot
             courseId={courseId}
             sectionId={section ? section.id : null}
             sequenceId={sequenceId}
@@ -111,8 +119,8 @@ const Course = ({
           </>
         )}
         <div className="w-100 d-flex align-items-center">
-          <CourseOutlineTrigger isMobileView />
-          {isNewDiscussionSidebarViewEnabled ? <NewSidebarTriggers /> : <SidebarTriggers /> }
+          <CourseOutlineMobileSidebarTriggerSlot />
+          <NotificationsDiscussionsSidebarTriggerSlot courseId={courseId} />
         </div>
       </div>
 

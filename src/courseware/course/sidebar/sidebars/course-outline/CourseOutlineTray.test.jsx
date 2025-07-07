@@ -64,7 +64,7 @@ describe('<CourseOutlineTray />', () => {
 
     expect(screen.getByText(messages.loading.defaultMessage)).toBeInTheDocument();
     expect(screen.getByText(messages.courseOutlineTitle.defaultMessage)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Course Outline' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Course outline' })).not.toBeInTheDocument();
   });
 
   it('doesn\'t render when outline sidebar is disabled', async () => {
@@ -88,6 +88,7 @@ describe('<CourseOutlineTray />', () => {
   });
 
   it('collapses sidebar correctly when toggle button is clicked', async () => {
+    const user = userEvent.setup();
     const mockToggleSidebar = jest.fn();
     await initTestStore();
     renderWithProvider({ toggleSidebar: mockToggleSidebar });
@@ -97,11 +98,27 @@ describe('<CourseOutlineTray />', () => {
     expect(sidebarBackBtn).toBeInTheDocument();
     expect(collapseBtn).toBeInTheDocument();
 
-    userEvent.click(collapseBtn);
+    await user.click(collapseBtn);
+    expect(mockToggleSidebar).toHaveBeenCalledWith(null);
+  });
+
+  it('collapses sidebar correctly when screen is resized', async () => {
+    const mockToggleSidebar = jest.fn();
+    await initTestStore();
+    renderWithProvider({ toggleSidebar: mockToggleSidebar });
+
+    const collapseBtn = screen.getByRole('button', { name: messages.toggleCourseOutlineTrigger.defaultMessage });
+    expect(collapseBtn).toBeInTheDocument();
+
+    // Simulate screen resize
+    window.innerWidth = 500;
+    window.dispatchEvent(new Event('resize'));
+
     expect(mockToggleSidebar).toHaveBeenCalledWith(null);
   });
 
   it('navigates to section or sequence level correctly on click by back/section button', async () => {
+    const user = userEvent.setup();
     await initTestStore();
     renderWithProvider();
 
@@ -109,11 +126,11 @@ describe('<CourseOutlineTray />', () => {
     expect(sidebarBackBtn).toBeInTheDocument();
     expect(screen.getByRole('button', { name: `${sequence.title} , ${courseOutlineMessages.incompleteAssignment.defaultMessage}` })).toBeInTheDocument();
 
-    userEvent.click(sidebarBackBtn);
+    await user.click(sidebarBackBtn);
     expect(sidebarBackBtn).not.toBeInTheDocument();
     expect(screen.queryByText(messages.courseOutlineTitle.defaultMessage)).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: `${section.title} , ${courseOutlineMessages.incompleteSection.defaultMessage}` }));
+    await user.click(screen.getByRole('button', { name: `${section.title} , ${courseOutlineMessages.incompleteSection.defaultMessage}` }));
     expect(screen.queryByRole('button', { name: section.title })).toBeInTheDocument();
   });
 });

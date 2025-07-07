@@ -78,7 +78,7 @@ const messages = defineMessages({
   },
   courseOutline: {
     id: 'progress.courseOutline',
-    defaultMessage: 'Course Outline',
+    defaultMessage: 'Course outline',
     description: 'Anchor text for link that redirects to (course outline) tab',
   },
   currentGradeLabel: {
@@ -91,9 +91,14 @@ const messages = defineMessages({
     defaultMessage: 'Detailed grades',
     description: 'Headline for the (detailed grade) section in the progress tab',
   },
-  detailedGradesEmpty: {
+  detailedGradesEmptyOnlyGraded: {
     id: 'progress.detailedGrades.emptyTable',
     defaultMessage: 'You currently have no graded problem scores.',
+    description: 'It indicate that there are no graded problem or assignments to be scored',
+  },
+  detailedGradesEmpty: {
+    id: 'progress.detailedGrades.including-ungraded.emptyTable',
+    defaultMessage: 'You currently have no graded or ungraded problem scores.',
     description: 'It indicate that there are no problem or assignments to be scored',
   },
   footnotesTitle: {
@@ -128,7 +133,7 @@ const messages = defineMessages({
   },
   gradeSummaryLimitedAccessExplanation: {
     id: 'progress.gradeSummary.limitedAccessExplanation',
-    defaultMessage: 'You have limited access to graded assignments as part of the audit track in this course.',
+    defaultMessage: 'You have limited access to graded assignments as part of the audit track in this course. {upgradeLink}',
     description: 'Text shown when learner has limited access to grade feature',
   },
   gradeSummaryTooltipAlt: {
@@ -158,10 +163,15 @@ const messages = defineMessages({
     defaultMessage: 'Passing grade',
     description: 'Label for mark on the (grade bar) chart which indicate the poisition of passing grade on the bar',
   },
-  problemScoreLabel: {
+  gradedScoreLabel: {
     id: 'progress.detailedGrades.problemScore.label',
-    defaultMessage: 'Problem Scores:',
+    defaultMessage: 'Graded Scores:',
     description: 'Label text which precedes detailed view of all scores per assignment',
+  },
+  practiceScoreLabel: {
+    id: 'progress.detailedGrades.practice.problemScore.label',
+    defaultMessage: 'Practice Scores:',
+    description: 'Label text which precedes detailed view of all ungraded problem scores per assignment',
   },
   problemScoreToggleAltText: {
     id: 'progress.detailedGrades.problemScore.toggleButton',
@@ -193,7 +203,31 @@ const messages = defineMessages({
     defaultMessage: 'Your current weighted grade summary',
     description: 'It the text precede the sum of weighted grades of all the assignment',
   },
-
+  weightedGradeSummaryTooltip: {
+    id: 'progress.weightedGradeSummary',
+    defaultMessage: 'Your raw weighted grade summary is {rawGrade} and rounds to {roundedGrade}.',
+    description: 'Tooltip content that explains the rounding of the summary versus individual assignments',
+  },
+  practiceScoreInfoText: {
+    id: 'progress.detailedGrades.practice-label.info.text',
+    defaultMessage: 'Scores from non-graded activities meant for practice and self-assessment.',
+    description: 'Information text about non-graded practice score label',
+  },
+  gradedScoreInfoText: {
+    id: 'progress.detailedGrades.problem-label.info.text',
+    defaultMessage: 'Scores from activities that contribute to your final grade.',
+    description: 'Information text about graded problem score label',
+  },
+  ungradedAlert: {
+    id: 'progress.ungradedAlert',
+    defaultMessage: 'For progress on ungraded aspects of the course, view your {outlineLink}.',
+    description: 'Text that precede link that redirect to course outline page',
+  },
+  droppableAssignmentsText: {
+    id: 'progress.footnotes.droppableAssignments',
+    defaultMessage: 'The lowest {numDroppable, plural, one{# {assignmentType} score is} other{# {assignmentType} scores are}} dropped.',
+    description: 'Footnote text stating how many assignments are dropped',
+  },
 });
 
 export default messages;

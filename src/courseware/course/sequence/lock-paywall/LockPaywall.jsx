@@ -2,14 +2,14 @@ import React, { useContext } from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import { sendTrackEvent } from '@edx/frontend-platform/analytics';
-import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
+import { useIntl } from '@edx/frontend-platform/i18n';
 import {
   Alert, Hyperlink, breakpoints, useWindowSize,
 } from '@openedx/paragon';
 import { Locked } from '@openedx/paragon/icons';
 import SidebarContext from '../../sidebar/SidebarContext';
 import messages from './messages';
-import certificateLocked from '../../../../generic/assets/edX_locked_certificate.png';
+import certificateLocked from '../../../../generic/assets/openedx_locked_certificate.png';
 import { useModel } from '../../../../generic/model-store';
 import { UpgradeButton } from '../../../../generic/upgrade-button';
 import {
@@ -20,9 +20,9 @@ import {
 } from '../../../../generic/upsell-bullets/UpsellBullets';
 
 const LockPaywall = ({
-  intl,
   courseId,
 }) => {
+  const intl = useIntl();
   const { notificationTrayVisible } = useContext(SidebarContext);
   const course = useModel('coursewareMeta', courseId);
   const {
@@ -143,7 +143,6 @@ const LockPaywall = ({
   );
 };
 LockPaywall.propTypes = {
-  intl: intlShape.isRequired,
   courseId: PropTypes.string.isRequired,
 };
-export default injectIntl(LockPaywall);
+export default LockPaywall;
