@@ -47,12 +47,18 @@ let interceptorCleanup = null;
 subscribe(APP_READY, () => {
   // Initialize global auth interceptor
   // This sets up interceptors on getAuthenticatedHttpClient() to handle JWT tokens
+  // Use setTimeout to ensure frontend-platform is fully initialized
   if (!interceptorCleanup) {
-    logInfo('[JWT Auth] Initializing global auth interceptor on APP_READY', {
-      jwtAuthEnabled: process.env.JWT_AUTH_ENABLED === 'true',
-      originWhitelist: process.env.JWT_AUTH_ORIGIN_WHITELIST,
-    });
-    interceptorCleanup = setupAuthInterceptor();
+    try {
+      logInfo('[JWT Auth] Initializing global auth interceptor on APP_READY', {
+        jwtAuthEnabled: process.env.JWT_AUTH_ENABLED === 'true',
+        originWhitelist: process.env.JWT_AUTH_ORIGIN_WHITELIST,
+      });
+      interceptorCleanup = setupAuthInterceptor();
+    } catch (error) {
+      // If interceptor setup fails, log but don't block app initialization
+      console.error('[JWT Auth] Failed to setup auth interceptor:', error);
+    }
   }
 
   const root = createRoot(document.getElementById('root'));
@@ -220,13 +226,24 @@ initialize({
           : [],
       }, 'LearnerAppConfig');
 
-      // Log JWT auth configuration
-      const config = getConfig();
-      logInfo('[JWT Auth] Configuration loaded', {
-        jwtAuthEnabled: config.JWT_AUTH_ENABLED,
-        originWhitelist: config.JWT_AUTH_ORIGIN_WHITELIST,
-        whitelistCount: config.JWT_AUTH_ORIGIN_WHITELIST?.length || 0,
-      });
+      // Log JWT auth configuration (after config is merged)
+      // Use setTimeout to ensure config is available after merge
+      setTimeout(() => {
+        try {
+          const config = getConfig();
+          logInfo('[JWT Auth] Configuration loaded', {
+            jwtAuthEnabled: config.JWT_AUTH_ENABLED,
+            originWhitelist: config.JWT_AUTH_ORIGIN_WHITELIST,
+            whitelistCount: config.JWT_AUTH_ORIGIN_WHITELIST?.length || 0,
+          });
+        } catch (e) {
+          // Config might not be available yet, log without it
+          logInfo('[JWT Auth] Configuration loaded', {
+            jwtAuthEnabled: process.env.JWT_AUTH_ENABLED === 'true',
+            originWhitelist: process.env.JWT_AUTH_ORIGIN_WHITELIST,
+          });
+        }
+      }, 0);
     },
   },
   messages,
