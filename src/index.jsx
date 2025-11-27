@@ -14,6 +14,9 @@ import DiscussionTab from './course-home/discussion-tab/DiscussionTab';
 
 import messages from './i18n';
 import { UserMessagesProvider } from './generic/user-messages';
+import { AuthenticatedHttpClientProvider } from './contexts/AuthenticatedHttpClientContext';
+import { setupAuthInterceptor } from './utils/setupAuthInterceptor';
+import { logInfo } from '@edx/frontend-platform/logging';
 
 import './index.scss';
 import OutlineTab from './course-home/outline-tab';
@@ -37,7 +40,21 @@ import { DECODE_ROUTES, ROUTES } from './constants';
 import PreferencesUnsubscribe from './preferences-unsubscribe';
 import PageNotFound from './generic/PageNotFound';
 
+// Set up global auth interceptor before app initializes
+// This allows API functions to use getAuthenticatedHttpClient() without modification
+let interceptorCleanup = null;
+
 subscribe(APP_READY, () => {
+  // Initialize global auth interceptor
+  // This sets up interceptors on getAuthenticatedHttpClient() to handle JWT tokens
+  if (!interceptorCleanup) {
+    logInfo('[JWT Auth] Initializing global auth interceptor on APP_READY', {
+      jwtAuthEnabled: process.env.JWT_AUTH_ENABLED === 'true',
+      originWhitelist: process.env.JWT_AUTH_ORIGIN_WHITELIST,
+    });
+    interceptorCleanup = setupAuthInterceptor();
+  }
+
   const root = createRoot(document.getElementById('root'));
 
   root.render(
@@ -48,8 +65,9 @@ subscribe(APP_READY, () => {
         </Helmet>
         <PathFixesProvider>
           <NoticesProvider>
-            <UserMessagesProvider>
-              <div className="app-container">
+            <AuthenticatedHttpClientProvider>
+              <UserMessagesProvider>
+                <div className="app-container">
                 <Routes>
                   <Route path="*" element={<PageWrap><PageNotFound /></PageWrap>} />
                   <Route path={ROUTES.UNSUBSCRIBE} element={<PageWrap><GoalUnsubscribe /></PageWrap>} />
@@ -145,7 +163,8 @@ subscribe(APP_READY, () => {
                   ))}
                 </Routes>
               </div>
-            </UserMessagesProvider>
+              </UserMessagesProvider>
+            </AuthenticatedHttpClientProvider>
           </NoticesProvider>
         </PathFixesProvider>
       </AppProvider>
@@ -195,7 +214,19 @@ initialize({
         PRIVACY_POLICY_URL: process.env.PRIVACY_POLICY_URL || null,
         SHOW_UNGRADED_ASSIGNMENT_PROGRESS: process.env.SHOW_UNGRADED_ASSIGNMENT_PROGRESS || false,
         ENABLE_XPERT_AUDIT: process.env.ENABLE_XPERT_AUDIT || false,
+        JWT_AUTH_ENABLED: process.env.JWT_AUTH_ENABLED === 'true' || false,
+        JWT_AUTH_ORIGIN_WHITELIST: process.env.JWT_AUTH_ORIGIN_WHITELIST
+          ? process.env.JWT_AUTH_ORIGIN_WHITELIST.split(',').map(origin => origin.trim())
+          : [],
       }, 'LearnerAppConfig');
+
+      // Log JWT auth configuration
+      const config = getConfig();
+      logInfo('[JWT Auth] Configuration loaded', {
+        jwtAuthEnabled: config.JWT_AUTH_ENABLED,
+        originWhitelist: config.JWT_AUTH_ORIGIN_WHITELIST,
+        whitelistCount: config.JWT_AUTH_ORIGIN_WHITELIST?.length || 0,
+      });
     },
   },
   messages,
