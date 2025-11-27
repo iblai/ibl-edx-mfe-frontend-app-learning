@@ -80,11 +80,11 @@ export function setupAuthInterceptor() {
           // Add JWT token to Authorization header
           // Format: Authorization: JWT <token>
           config.headers.Authorization = `JWT ${jwtToken}`;
-          
+
           // For cross-origin requests, disable credentials (cookies)
           // This ensures we're using JWT instead of cookies
           config.withCredentials = false;
-          
+
           logInfo('[JWT Auth] Request interceptor - JWT mode', {
             url,
             method: config.method,
@@ -95,10 +95,10 @@ export function setupAuthInterceptor() {
           // Cookie-based authentication: ensure credentials are sent
           // This is the default behavior, but we make it explicit
           config.withCredentials = true;
-          
+
           // Remove Authorization header if it exists (from previous JWT mode)
           delete config.headers.Authorization;
-          
+
           logInfo('[JWT Auth] Request interceptor - Cookie mode', {
             url,
             method: config.method,
@@ -125,7 +125,7 @@ export function setupAuthInterceptor() {
         // Handle authentication errors
         const status = error?.response?.status;
         const { mode, jwtToken } = globalAuthState;
-        
+
         if (status === 401) {
           // Unauthorized - token may be invalid or expired
           if (mode === 'jwt' && jwtToken) {
@@ -136,7 +136,7 @@ export function setupAuthInterceptor() {
               method: error?.config?.method,
               hasToken: !!jwtToken,
             });
-            
+
             // Request token refresh from parent window
             try {
               if (window.parent && window.parent !== window) {
