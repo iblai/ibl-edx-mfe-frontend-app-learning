@@ -30,15 +30,15 @@ export function logToServer(event, data = {}) {
     // This will appear in server access logs
     const logUrl = `/learning/api/jwt-auth-log?${params.toString()}`;
 
-    // Use sendBeacon for reliability (doesn't block page unload)
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(logUrl);
-    } else {
-      // Fallback to fetch (fire and forget)
-      fetch(logUrl, { method: 'GET', keepalive: true }).catch(() => {
-        // Silently fail - logging should never break the app
-      });
-    }
+    // Use GET request with fetch (sendBeacon always uses POST)
+    // This will appear in Docker access logs as GET requests
+    fetch(logUrl, {
+      method: 'GET',
+      keepalive: true,
+      credentials: 'same-origin'
+    }).catch(() => {
+      // Silently fail - logging should never break the app
+    });
   } catch (error) {
     // Silently fail - logging should never break the app
     // console.error('[JWT Auth] Failed to log to server', error);

@@ -10,7 +10,10 @@ import { logInfo } from '@edx/frontend-platform/logging';
 export function JWTAuthDebugger() {
   // Add explicit console.log that will definitely show
   React.useEffect(() => {
+    // Use multiple console methods to ensure visibility
     console.log('[JWT Auth] JWTAuthDebugger component is mounting...');
+    console.info('[JWT Auth] JWTAuthDebugger component is mounting...');
+    console.warn('[JWT Auth] JWTAuthDebugger component is mounting...'); // Warning level is harder to filter
   }, []);
 
   const authMode = useAuthMode();
