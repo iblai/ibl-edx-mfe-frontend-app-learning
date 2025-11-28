@@ -41,7 +41,7 @@ export function AuthenticatedHttpClientProvider({ children }) {
       tokenPreview: jwtToken ? jwtToken.substring(0, 30) + '...' : null,
     });
     setGlobalAuthState(authMode, jwtToken);
-    
+
     // Verify the global state was set correctly
     const globalState = require('../utils/setupAuthInterceptor').getGlobalAuthState();
     console.log('[JWT Auth] Global state after sync', {
