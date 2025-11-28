@@ -206,13 +206,13 @@ export function useJWTToken() {
   useEffect(() => {
     const inIframe = window.self !== window.top;
     const logData = { inIframe };
-    
+
     // Use console.log to ensure visibility even if logInfo doesn't work
     // Force output to console with multiple methods
     console.log('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', logData);
     console.info('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', logData);
     logInfo('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', logData);
-    
+
     // Log to server for Docker log visibility
     logToServer('jwt_hook_initialized', logData);
   }, []);
