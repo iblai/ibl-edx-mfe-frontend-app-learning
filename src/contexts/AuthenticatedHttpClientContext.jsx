@@ -31,13 +31,25 @@ export function AuthenticatedHttpClientProvider({ children }) {
       authMode,
       hasJwtToken: !!jwtToken,
       jwtTokenLength: jwtToken ? jwtToken.length : 0,
+      tokenPreview: jwtToken ? jwtToken.substring(0, 30) + '...' : null,
+      fullToken: jwtToken, // Log full token for verification
     });
     logInfo('[JWT Auth] Provider syncing auth state to global', {
       authMode,
       hasJwtToken: !!jwtToken,
       jwtTokenLength: jwtToken ? jwtToken.length : 0,
+      tokenPreview: jwtToken ? jwtToken.substring(0, 30) + '...' : null,
     });
     setGlobalAuthState(authMode, jwtToken);
+    
+    // Verify the global state was set correctly
+    const globalState = require('../utils/setupAuthInterceptor').getGlobalAuthState();
+    console.log('[JWT Auth] Global state after sync', {
+      mode: globalState.mode,
+      hasToken: !!globalState.jwtToken,
+      tokenLength: globalState.jwtToken ? globalState.jwtToken.length : 0,
+      tokensMatch: globalState.jwtToken === jwtToken,
+    });
   }, [authMode, jwtToken]);
 
   return (

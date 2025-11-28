@@ -53,14 +53,32 @@ export function useAuthMode() {
   // Determine authentication mode
   const authMode = useMemo(() => {
     // TEST MODE: If test token exists, force JWT mode regardless of iframe/cookies
-    const hasTestToken = !!process.env.JWT_TEST_TOKEN;
-    if (hasTestToken && jwtToken) {
+    const testToken = process.env.JWT_TEST_TOKEN;
+    const hasTestToken = !!testToken;
+
+    // Log token state for debugging
+    console.log('[JWT Auth] Auth mode determination', {
+      hasTestToken,
+      hasJwtToken: !!jwtToken,
+      jwtTokenLength: jwtToken ? jwtToken.length : 0,
+      jwtTokenPreview: jwtToken ? jwtToken.substring(0, 30) + '...' : null,
+      testTokenLength: testToken ? testToken.length : 0,
+      testTokenPreview: testToken ? testToken.substring(0, 30) + '...' : null,
+    });
+
+    // TEST MODE: Force JWT if test token exists (even if jwtToken from hook is null initially)
+    if (hasTestToken) {
+      // Use test token directly if jwtToken from hook is not available yet
+      const tokenToUse = jwtToken || testToken;
       const logData = {
         mode: 'jwt',
         jwtAuthEnabled,
         inIframe,
         cookiesAvailable,
         hasJwtToken: !!jwtToken,
+        hasTestToken: true,
+        usingTestToken: !jwtToken,
+        tokenLength: tokenToUse ? tokenToUse.length : 0,
         testMode: true,
       };
       console.log('[JWT Auth] TEST MODE: Forcing JWT authentication mode', logData);
@@ -104,13 +122,29 @@ export function useAuthMode() {
     return 'cookie';
   }, [jwtAuthEnabled, inIframe, cookiesAvailable, jwtToken]);
 
+  // In TEST MODE, use test token directly if jwtToken from hook is not available
+  const testToken = process.env.JWT_TEST_TOKEN;
+  const tokenToUse = authMode === 'jwt'
+    ? (jwtToken || testToken) // Use test token if jwtToken not available yet
+    : null;
+
   const authState = {
     mode: authMode,
-    jwtToken: authMode === 'jwt' ? jwtToken : null,
+    jwtToken: tokenToUse,
     isInIframe: inIframe,
     hasCookies: cookiesAvailable,
     jwtLoading, // Expose loading state for components that need it
   };
+
+  // Log the final token that will be used
+  if (authMode === 'jwt' && tokenToUse) {
+    console.log('[JWT Auth] Auth state - JWT token to use', {
+      tokenLength: tokenToUse.length,
+      tokenPreview: tokenToUse.substring(0, 30) + '...',
+      isFromTestToken: tokenToUse === testToken,
+      isFromHook: tokenToUse === jwtToken,
+    });
+  }
 
   // Log auth state changes to server for Docker log visibility
   useMemo(() => {
