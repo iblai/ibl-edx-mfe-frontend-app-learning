@@ -195,11 +195,14 @@ export function useJWTToken() {
   // Listen for postMessage events
   useEventListener('message', receiveMessage);
 
-  // Log hook initialization
+  // Log hook initialization with both console.log and logInfo
   useEffect(() => {
-    logInfo('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', {
-      inIframe: window.self !== window.top,
-    });
+    const inIframe = window.self !== window.top;
+    const logData = { inIframe };
+
+    // Use console.log to ensure visibility even if logInfo doesn't work
+    console.log('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', logData);
+    logInfo('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', logData);
   }, []);
 
   /**

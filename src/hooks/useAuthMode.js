@@ -36,13 +36,15 @@ export function useAuthMode() {
   const authMode = useMemo(() => {
     // Only use JWT if feature is enabled
     if (jwtAuthEnabled && inIframe && !cookiesAvailable && jwtToken) {
-      logInfo('[JWT Auth] Authentication mode determined', {
+      const logData = {
         mode: 'jwt',
         jwtAuthEnabled,
         inIframe,
         cookiesAvailable,
         hasJwtToken: !!jwtToken,
-      });
+      };
+      console.log('[JWT Auth] Authentication mode determined', logData);
+      logInfo('[JWT Auth] Authentication mode determined', logData);
       return 'jwt';
     }
 
@@ -52,7 +54,7 @@ export function useAuthMode() {
     // - Not in iframe (direct access)
     // - In iframe but cookies are available (same-origin or SameSite allows)
     // - In iframe but no JWT token received yet
-    logInfo('[JWT Auth] Authentication mode determined', {
+    const logData = {
       mode: 'cookie',
       jwtAuthEnabled,
       inIframe,
@@ -62,7 +64,9 @@ export function useAuthMode() {
               !inIframe ? 'not in iframe' :
               cookiesAvailable ? 'cookies available' :
               !jwtToken ? 'no JWT token' : 'unknown',
-    });
+    };
+    console.log('[JWT Auth] Authentication mode determined', logData);
+    logInfo('[JWT Auth] Authentication mode determined', logData);
     return 'cookie';
   }, [jwtAuthEnabled, inIframe, cookiesAvailable, jwtToken]);
 

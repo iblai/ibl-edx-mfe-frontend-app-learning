@@ -8,17 +8,26 @@ import { logInfo } from '@edx/frontend-platform/logging';
  * Can be removed or hidden in production.
  */
 export function JWTAuthDebugger() {
+  // Add explicit console.log that will definitely show
+  React.useEffect(() => {
+    console.log('[JWT Auth] JWTAuthDebugger component is mounting...');
+  }, []);
+
   const authMode = useAuthMode();
 
-  // Log auth mode changes
+  // Log auth mode changes with both logInfo and console.log
   React.useEffect(() => {
-    logInfo('[JWT Auth] JWTAuthDebugger component mounted', {
+    const logData = {
       mode: authMode.mode,
       isInIframe: authMode.isInIframe,
       hasCookies: authMode.hasCookies,
       jwtLoading: authMode.jwtLoading,
       hasJwtToken: !!authMode.jwtToken,
-    });
+    };
+
+    // Use both logging methods to ensure visibility
+    console.log('[JWT Auth] JWTAuthDebugger component mounted', logData);
+    logInfo('[JWT Auth] JWTAuthDebugger component mounted', logData);
   }, [authMode.mode, authMode.isInIframe, authMode.hasCookies, authMode.jwtLoading, authMode.jwtToken]);
 
   // This component doesn't render anything visible

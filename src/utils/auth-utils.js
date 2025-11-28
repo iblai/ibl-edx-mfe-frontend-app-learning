@@ -8,11 +8,13 @@ import { logInfo, logError } from '@edx/frontend-platform/logging';
 export function isInIframe() {
   try {
     const inIframe = window.self !== window.top;
+    console.log('[JWT Auth] Iframe detection', { inIframe });
     logInfo('[JWT Auth] Iframe detection', { inIframe });
     return inIframe;
   } catch (e) {
     // Cross-origin iframe - accessing window.top throws an error
     // This means we're definitely in an iframe
+    console.log('[JWT Auth] Iframe detection (cross-origin)', { inIframe: true, error: e.message });
     logInfo('[JWT Auth] Iframe detection (cross-origin)', { inIframe: true, error: e.message });
     return true;
   }
