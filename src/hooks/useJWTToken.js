@@ -195,6 +195,13 @@ export function useJWTToken() {
   // Listen for postMessage events
   useEventListener('message', receiveMessage);
 
+  // Log hook initialization
+  useEffect(() => {
+    logInfo('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', {
+      inIframe: window.self !== window.top,
+    });
+  }, []);
+
   /**
    * Clear the stored token.
    * Useful for logout or error recovery.
@@ -220,6 +227,9 @@ export function useJWTToken() {
       if (isLoading && !token) {
         // No token received - this might be normal if cookies are available
         // Don't set error, just stop loading
+        logInfo('[JWT Auth] No JWT token received within timeout - this is normal if cookies are available', {
+          timeoutMs: 5000,
+        });
         setIsLoading(false);
       }
     }, 5000); // 5 second timeout
