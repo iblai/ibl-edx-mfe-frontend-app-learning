@@ -36,6 +36,7 @@ import DecodePageRoute from './decode-page-route';
 import { DECODE_ROUTES, ROUTES } from './constants';
 import PreferencesUnsubscribe from './preferences-unsubscribe';
 import PageNotFound from './generic/PageNotFound';
+import { JWTAuthDebugger } from './hooks/JWTAuthDebugger';
 
 subscribe(APP_READY, () => {
   const root = createRoot(document.getElementById('root'));
@@ -49,6 +50,7 @@ subscribe(APP_READY, () => {
         <PathFixesProvider>
           <NoticesProvider>
             <UserMessagesProvider>
+              <JWTAuthDebugger />
               <div className="app-container">
                 <Routes>
                   <Route path="*" element={<PageWrap><PageNotFound /></PageWrap>} />
