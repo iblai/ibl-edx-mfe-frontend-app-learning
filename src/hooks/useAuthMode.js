@@ -27,14 +27,38 @@ export function useAuthMode() {
   // Check if session cookies are available
   const cookiesAvailable = useMemo(() => hasSessionCookies(), []);
 
-  // Check if JWT auth is enabled via feature flag
+  // Check if JWT auth is enabled via feature flag OR test token is present
   const jwtAuthEnabled = useMemo(() => {
     const config = getConfig();
-    return config.JWT_AUTH_ENABLED === true;
+    // Enable JWT auth if feature flag is on OR if test token is present
+    const hasTestToken = !!process.env.JWT_TEST_TOKEN;
+    const enabled = config.JWT_AUTH_ENABLED === true || hasTestToken;
+
+    if (hasTestToken) {
+      console.log('[JWT Auth] TEST MODE: JWT auth enabled due to test token');
+    }
+
+    return enabled;
   }, []);
 
   // Determine authentication mode
   const authMode = useMemo(() => {
+    // TEST MODE: If test token exists, force JWT mode regardless of iframe/cookies
+    const hasTestToken = !!process.env.JWT_TEST_TOKEN;
+    if (hasTestToken && jwtToken) {
+      const logData = {
+        mode: 'jwt',
+        jwtAuthEnabled,
+        inIframe,
+        cookiesAvailable,
+        hasJwtToken: !!jwtToken,
+        testMode: true,
+      };
+      console.log('[JWT Auth] TEST MODE: Forcing JWT authentication mode', logData);
+      logInfo('[JWT Auth] Authentication mode determined (TEST MODE)', logData);
+      return 'jwt';
+    }
+
     // Only use JWT if feature is enabled
     if (jwtAuthEnabled && inIframe && !cookiesAvailable && jwtToken) {
       const logData = {

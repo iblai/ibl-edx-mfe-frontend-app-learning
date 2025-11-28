@@ -21,8 +21,12 @@ import { logToServer } from '../utils/server-logger';
  *   - error: string | null - Error message if token reception fails
  */
 export function useJWTToken() {
-  const [token, setToken] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // TEST MODE: Allow hardcoded JWT token for testing
+  // Set via environment variable: JWT_TEST_TOKEN
+  const testToken = process.env.JWT_TEST_TOKEN || null;
+
+  const [token, setToken] = useState(testToken); // Initialize with test token if available
+  const [isLoading, setIsLoading] = useState(!testToken); // If test token exists, not loading
   const [error, setError] = useState(null);
   const expiryCheckIntervalRef = useRef(null);
   const refreshRequestedRef = useRef(false);
@@ -205,17 +209,25 @@ export function useJWTToken() {
   // Log hook initialization with both console.log and logInfo
   useEffect(() => {
     const inIframe = window.self !== window.top;
-    const logData = { inIframe };
+    const logData = { inIframe, hasTestToken: !!testToken };
 
     // Use console.log to ensure visibility even if logInfo doesn't work
     // Force output to console with multiple methods
-    console.log('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', logData);
-    console.info('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', logData);
-    logInfo('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', logData);
+    if (testToken) {
+      console.log('[JWT Auth] TEST MODE: Using hardcoded JWT token', {
+        tokenLength: testToken.length,
+        tokenPreview: testToken.substring(0, 20) + '...'
+      });
+      console.log('[JWT Auth] useJWTToken hook initialized - TEST MODE with hardcoded token', logData);
+    } else {
+      console.log('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', logData);
+    }
+    console.info('[JWT Auth] useJWTToken hook initialized', logData);
+    logInfo('[JWT Auth] useJWTToken hook initialized', logData);
 
     // Log to server for Docker log visibility
     logToServer('jwt_hook_initialized', logData);
-  }, []);
+  }, [testToken]);
 
   // Listen for postMessage events (after initialization logging)
   useEventListener('message', receiveMessage);

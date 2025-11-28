@@ -37,8 +37,36 @@ import { DECODE_ROUTES, ROUTES } from './constants';
 import PreferencesUnsubscribe from './preferences-unsubscribe';
 import PageNotFound from './generic/PageNotFound';
 import { JWTAuthDebugger } from './hooks/JWTAuthDebugger';
+import { AuthenticatedHttpClientProvider } from './contexts/AuthenticatedHttpClientContext';
+import { setupAuthInterceptor } from './utils/setupAuthInterceptor';
+import { logInfo } from '@edx/frontend-platform/logging';
+
+// Set up global auth interceptor before app initializes
+// This allows API functions to use getAuthenticatedHttpClient() without modification
+let interceptorCleanup = null;
 
 subscribe(APP_READY, () => {
+  // Initialize global auth interceptor
+  // This sets up interceptors on getAuthenticatedHttpClient() to handle JWT tokens
+  // Use setTimeout to ensure frontend-platform is fully initialized
+  if (!interceptorCleanup) {
+    try {
+      console.log('[JWT Auth] Initializing global auth interceptor on APP_READY', {
+        jwtAuthEnabled: process.env.JWT_AUTH_ENABLED === 'true',
+        hasTestToken: !!process.env.JWT_TEST_TOKEN,
+        originWhitelist: process.env.JWT_AUTH_ORIGIN_WHITELIST,
+      });
+      logInfo('[JWT Auth] Initializing global auth interceptor on APP_READY', {
+        jwtAuthEnabled: process.env.JWT_AUTH_ENABLED === 'true',
+        hasTestToken: !!process.env.JWT_TEST_TOKEN,
+        originWhitelist: process.env.JWT_AUTH_ORIGIN_WHITELIST,
+      });
+      interceptorCleanup = setupAuthInterceptor();
+    } catch (error) {
+      // If interceptor setup fails, log but don't block app initialization
+      console.error('[JWT Auth] Failed to setup auth interceptor:', error);
+    }
+  }
   const root = createRoot(document.getElementById('root'));
 
   root.render(
@@ -49,9 +77,10 @@ subscribe(APP_READY, () => {
         </Helmet>
         <PathFixesProvider>
           <NoticesProvider>
-            <UserMessagesProvider>
-              <JWTAuthDebugger />
-              <div className="app-container">
+            <AuthenticatedHttpClientProvider>
+              <UserMessagesProvider>
+                <JWTAuthDebugger />
+                <div className="app-container">
                 <Routes>
                   <Route path="*" element={<PageWrap><PageNotFound /></PageWrap>} />
                   <Route path={ROUTES.UNSUBSCRIBE} element={<PageWrap><GoalUnsubscribe /></PageWrap>} />
@@ -146,8 +175,9 @@ subscribe(APP_READY, () => {
                     />
                   ))}
                 </Routes>
-              </div>
-            </UserMessagesProvider>
+                </div>
+              </UserMessagesProvider>
+            </AuthenticatedHttpClientProvider>
           </NoticesProvider>
         </PathFixesProvider>
       </AppProvider>
@@ -197,6 +227,11 @@ initialize({
         PRIVACY_POLICY_URL: process.env.PRIVACY_POLICY_URL || null,
         SHOW_UNGRADED_ASSIGNMENT_PROGRESS: process.env.SHOW_UNGRADED_ASSIGNMENT_PROGRESS || false,
         ENABLE_XPERT_AUDIT: process.env.ENABLE_XPERT_AUDIT || false,
+        JWT_AUTH_ENABLED: process.env.JWT_AUTH_ENABLED === 'true' || false,
+        JWT_AUTH_ORIGIN_WHITELIST: process.env.JWT_AUTH_ORIGIN_WHITELIST
+          ? process.env.JWT_AUTH_ORIGIN_WHITELIST.split(',').map(origin => origin.trim())
+          : [],
+        JWT_TEST_TOKEN: process.env.JWT_TEST_TOKEN || null, // TEST MODE: Hardcoded token for testing
       }, 'LearnerAppConfig');
     },
   },
