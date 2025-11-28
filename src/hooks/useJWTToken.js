@@ -3,6 +3,7 @@ import { useEventListener } from '../generic/hooks';
 import { validateMessageOrigin } from '../utils/auth-utils';
 import { isTokenExpired, getTimeUntilExpiration } from '../utils/jwt-utils';
 import { logInfo, logError } from '@edx/frontend-platform/logging';
+import { logToServer } from '../utils/server-logger';
 
 /**
  * React hook that listens for JWT tokens sent via postMessage from the parent window.
@@ -165,6 +166,13 @@ export function useJWTToken() {
         hasToken: !!trimmedToken,
       });
 
+      // Log to server for Docker log visibility
+      logToServer('jwt_token_received', {
+        tokenLength,
+        hasToken: true,
+        inIframe: window.self !== window.top,
+      });
+
       setToken(trimmedToken);
       setError(null);
       setIsLoading(false);
@@ -203,6 +211,9 @@ export function useJWTToken() {
     // Use console.log to ensure visibility even if logInfo doesn't work
     console.log('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', logData);
     logInfo('[JWT Auth] useJWTToken hook initialized - listening for JWT tokens via postMessage', logData);
+
+    // Log to server for Docker log visibility
+    logToServer('jwt_hook_initialized', logData);
   }, []);
 
   /**

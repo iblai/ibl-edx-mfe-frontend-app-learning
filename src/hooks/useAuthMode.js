@@ -3,6 +3,7 @@ import { getConfig } from '@edx/frontend-platform';
 import { logInfo } from '@edx/frontend-platform/logging';
 import { isInIframe, hasSessionCookies } from '../utils/auth-utils';
 import { useJWTToken } from './useJWTToken';
+import { logAuthStateToServer } from '../utils/server-logger';
 
 /**
  * React hook that determines the authentication mode to use.
@@ -70,12 +71,19 @@ export function useAuthMode() {
     return 'cookie';
   }, [jwtAuthEnabled, inIframe, cookiesAvailable, jwtToken]);
 
-  return {
+  const authState = {
     mode: authMode,
     jwtToken: authMode === 'jwt' ? jwtToken : null,
     isInIframe: inIframe,
     hasCookies: cookiesAvailable,
     jwtLoading, // Expose loading state for components that need it
   };
+
+  // Log auth state changes to server for Docker log visibility
+  useMemo(() => {
+    logAuthStateToServer(authState);
+  }, [authMode, inIframe, cookiesAvailable, jwtToken, jwtLoading]);
+
+  return authState;
 }
 
