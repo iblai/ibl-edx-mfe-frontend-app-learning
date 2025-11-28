@@ -4,6 +4,7 @@ import { validateMessageOrigin } from '../utils/auth-utils';
 import { isTokenExpired, getTimeUntilExpiration } from '../utils/jwt-utils';
 import { logInfo, logError } from '@edx/frontend-platform/logging';
 import { logToServer } from '../utils/server-logger';
+import { getConfig } from '@edx/frontend-platform';
 
 /**
  * React hook that listens for JWT tokens sent via postMessage from the parent window.
@@ -22,8 +23,9 @@ import { logToServer } from '../utils/server-logger';
  */
 export function useJWTToken() {
   // TEST MODE: Allow hardcoded JWT token for testing
-  // Set via environment variable: JWT_TEST_TOKEN
-  const testToken = process.env.JWT_TEST_TOKEN || null;
+  // Get from config (set via environment variable: JWT_TEST_TOKEN at build time)
+  const config = getConfig();
+  const testToken = config?.JWT_TEST_TOKEN || process.env.JWT_TEST_TOKEN || null;
 
   // Log test token presence (first 50 chars for verification, not full token for security)
   if (testToken) {

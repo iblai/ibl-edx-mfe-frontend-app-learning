@@ -31,7 +31,8 @@ export function useAuthMode() {
   const jwtAuthEnabled = useMemo(() => {
     const config = getConfig();
     // Enable JWT auth if feature flag is on OR if test token is present
-    const testToken = process.env.JWT_TEST_TOKEN;
+    // Get test token from config (merged from env var) or directly from process.env
+    const testToken = config?.JWT_TEST_TOKEN || process.env.JWT_TEST_TOKEN;
     const hasTestToken = !!testToken;
     const enabled = config.JWT_AUTH_ENABLED === true || hasTestToken;
 
@@ -53,7 +54,9 @@ export function useAuthMode() {
   // Determine authentication mode
   const authMode = useMemo(() => {
     // TEST MODE: If test token exists, force JWT mode regardless of iframe/cookies
-    const testToken = process.env.JWT_TEST_TOKEN;
+    const config = getConfig();
+    // Get test token from config (merged from env var) or directly from process.env
+    const testToken = config?.JWT_TEST_TOKEN || process.env.JWT_TEST_TOKEN;
     const hasTestToken = !!testToken;
 
     // Log token state for debugging
@@ -123,7 +126,8 @@ export function useAuthMode() {
   }, [jwtAuthEnabled, inIframe, cookiesAvailable, jwtToken]);
 
   // In TEST MODE, use test token directly if jwtToken from hook is not available
-  const testToken = process.env.JWT_TEST_TOKEN;
+  const config = getConfig();
+  const testToken = config?.JWT_TEST_TOKEN || process.env.JWT_TEST_TOKEN;
   const tokenToUse = authMode === 'jwt'
     ? (jwtToken || testToken) // Use test token if jwtToken not available yet
     : null;
