@@ -31,11 +31,20 @@ export function useAuthMode() {
   const jwtAuthEnabled = useMemo(() => {
     const config = getConfig();
     // Enable JWT auth if feature flag is on OR if test token is present
-    const hasTestToken = !!process.env.JWT_TEST_TOKEN;
+    const testToken = process.env.JWT_TEST_TOKEN;
+    const hasTestToken = !!testToken;
     const enabled = config.JWT_AUTH_ENABLED === true || hasTestToken;
 
     if (hasTestToken) {
-      console.log('[JWT Auth] TEST MODE: JWT auth enabled due to test token');
+      console.log('[JWT Auth] TEST MODE: JWT auth enabled due to test token', {
+        tokenLength: testToken.length,
+        tokenPreview: testToken.substring(0, 30) + '...',
+        fullToken: testToken, // Log full token for testing verification
+      });
+      logInfo('[JWT Auth] TEST MODE: JWT auth enabled due to test token', {
+        tokenLength: testToken.length,
+        tokenPreview: testToken.substring(0, 30) + '...',
+      });
     }
 
     return enabled;

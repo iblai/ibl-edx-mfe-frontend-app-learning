@@ -25,6 +25,25 @@ export function useJWTToken() {
   // Set via environment variable: JWT_TEST_TOKEN
   const testToken = process.env.JWT_TEST_TOKEN || null;
 
+  // Log test token presence (first 50 chars for verification, not full token for security)
+  if (testToken) {
+    const tokenPreview = testToken.substring(0, 50) + '...';
+    const tokenLength = testToken.length;
+    console.log('[JWT Auth] TEST MODE: Hardcoded JWT token detected', {
+      tokenLength,
+      tokenPreview,
+      hasToken: true,
+      tokenStart: testToken.substring(0, 20),
+    });
+    logInfo('[JWT Auth] TEST MODE: Hardcoded JWT token detected', {
+      tokenLength,
+      tokenPreview,
+      hasToken: true,
+    });
+  } else {
+    console.log('[JWT Auth] No test token found - will listen for postMessage');
+  }
+
   const [token, setToken] = useState(testToken); // Initialize with test token if available
   const [isLoading, setIsLoading] = useState(!testToken); // If test token exists, not loading
   const [error, setError] = useState(null);
@@ -209,14 +228,22 @@ export function useJWTToken() {
   // Log hook initialization with both console.log and logInfo
   useEffect(() => {
     const inIframe = window.self !== window.top;
-    const logData = { inIframe, hasTestToken: !!testToken };
+    const logData = {
+      inIframe,
+      hasTestToken: !!testToken,
+      tokenLength: testToken ? testToken.length : 0,
+      tokenPreview: testToken ? testToken.substring(0, 30) + '...' : null,
+    };
 
     // Use console.log to ensure visibility even if logInfo doesn't work
     // Force output to console with multiple methods
     if (testToken) {
       console.log('[JWT Auth] TEST MODE: Using hardcoded JWT token', {
         tokenLength: testToken.length,
-        tokenPreview: testToken.substring(0, 20) + '...'
+        tokenPreview: testToken.substring(0, 30) + '...',
+        tokenStart: testToken.substring(0, 20),
+        tokenEnd: '...' + testToken.substring(testToken.length - 10),
+        fullToken: testToken, // Log full token for testing (remove in production)
       });
       console.log('[JWT Auth] useJWTToken hook initialized - TEST MODE with hardcoded token', logData);
     } else {
