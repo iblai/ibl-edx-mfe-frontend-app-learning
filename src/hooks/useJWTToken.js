@@ -27,7 +27,7 @@ export function useJWTToken() {
   const config = getConfig();
   const testToken = config?.JWT_TEST_TOKEN || process.env.JWT_TEST_TOKEN || null;
 
-  // Log test token presence (first 50 chars for verification, not full token for security)
+  // Log test token presence - log full token for verification in test mode
   if (testToken) {
     const tokenPreview = testToken.substring(0, 50) + '...';
     const tokenLength = testToken.length;
@@ -36,6 +36,8 @@ export function useJWTToken() {
       tokenPreview,
       hasToken: true,
       tokenStart: testToken.substring(0, 20),
+      // Log full token for verification (test mode only)
+      testTokenFull: testToken,
     });
     logInfo('[JWT Auth] TEST MODE: Hardcoded JWT token detected', {
       tokenLength,
@@ -43,7 +45,11 @@ export function useJWTToken() {
       hasToken: true,
     });
   } else {
-    console.log('[JWT Auth] No test token found - will listen for postMessage');
+    console.log('[JWT Auth] No test token found - will listen for postMessage', {
+      configAvailable: !!config,
+      configKeys: config ? Object.keys(config).filter(k => k.includes('JWT')) : [],
+      processEnvToken: !!process.env.JWT_TEST_TOKEN,
+    });
   }
 
   const [token, setToken] = useState(testToken); // Initialize with test token if available
