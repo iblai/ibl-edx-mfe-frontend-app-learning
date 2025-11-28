@@ -51,15 +51,21 @@ subscribe(APP_READY, () => {
   // Use setTimeout to ensure frontend-platform is fully initialized
   if (!interceptorCleanup) {
     try {
+      // Get config to check for test token
+      const config = getConfig();
+      const testToken = config?.JWT_TEST_TOKEN || process.env.JWT_TEST_TOKEN;
       console.log('[JWT Auth] Initializing global auth interceptor on APP_READY', {
-        jwtAuthEnabled: process.env.JWT_AUTH_ENABLED === 'true',
-        hasTestToken: !!process.env.JWT_TEST_TOKEN,
-        originWhitelist: process.env.JWT_AUTH_ORIGIN_WHITELIST,
+        jwtAuthEnabled: config?.JWT_AUTH_ENABLED === true || !!testToken,
+        hasTestToken: !!testToken,
+        testTokenLength: testToken ? testToken.length : 0,
+        testTokenPreview: testToken ? testToken.substring(0, 30) + '...' : null,
+        originWhitelist: config?.JWT_AUTH_ORIGIN_WHITELIST,
       });
       logInfo('[JWT Auth] Initializing global auth interceptor on APP_READY', {
-        jwtAuthEnabled: process.env.JWT_AUTH_ENABLED === 'true',
-        hasTestToken: !!process.env.JWT_TEST_TOKEN,
-        originWhitelist: process.env.JWT_AUTH_ORIGIN_WHITELIST,
+        jwtAuthEnabled: config?.JWT_AUTH_ENABLED === true || !!testToken,
+        hasTestToken: !!testToken,
+        testTokenLength: testToken ? testToken.length : 0,
+        originWhitelist: config?.JWT_AUTH_ORIGIN_WHITELIST,
       });
       interceptorCleanup = setupAuthInterceptor();
     } catch (error) {
