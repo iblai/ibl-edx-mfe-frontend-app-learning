@@ -23,11 +23,11 @@ function logErrorDetails(error, context = {}) {
   };
 
   // Console logging (always visible)
-  console.error('[ERROR LOGGING]', errorInfo);
-  console.error('[ERROR LOGGING] Stack trace:', error?.stack);
+  console.error('[JWT Auth] Error:', errorInfo);
+  console.error('[JWT Auth] Error Stack trace:', error?.stack);
 
   // Frontend-platform logging
-  logError('[ERROR LOGGING]', errorInfo);
+  logError('[JWT Auth] Error', errorInfo);
 
   // Server logging (for Docker logs)
   logToServer('error_occurred', {
@@ -47,8 +47,8 @@ function logErrorDetails(error, context = {}) {
  */
 export function setupGlobalErrorHandlers() {
   // Log that we're setting up error handlers
-  console.log('[ERROR LOGGING] Setting up global error handlers');
-  logInfo('[ERROR LOGGING] Setting up global error handlers', {
+  console.log('[JWT Auth] Setting up global error handlers');
+  logInfo('[JWT Auth] Setting up global error handlers', {
     url: window.location.href,
     referrer: document.referrer,
     inIframe: window.self !== window.top,
@@ -92,7 +92,7 @@ export function setupGlobalErrorHandlers() {
     }
   }, true); // Use capture phase
 
-  console.log('[ERROR LOGGING] Global error handlers installed');
+  console.log('[JWT Auth] Global error handlers installed');
 }
 
 /**
@@ -108,8 +108,8 @@ export function logInitializationMilestone(milestone, data = {}) {
     ...data,
   };
 
-  console.log(`[INIT] ${milestone}`, logData);
-  logInfo(`[INIT] ${milestone}`, logData);
+  console.log(`[JWT Auth] Init: ${milestone}`, logData);
+  logInfo(`[JWT Auth] Init: ${milestone}`, logData);
   logToServer('init_milestone', { milestone, ...data });
 }
 
@@ -135,8 +135,8 @@ export function logRequestDetails(config, phase = 'request') {
       : authHeader;
   }
 
-  console.log(`[REQUEST ${phase.toUpperCase()}]`, logData);
-  logInfo(`[REQUEST ${phase.toUpperCase()}]`, logData);
+  console.log(`[JWT Auth] Request (${phase}):`, logData);
+  logInfo(`[JWT Auth] Request (${phase})`, logData);
   logToServer(`request_${phase}`, {
     url: logData.url,
     method: logData.method,
@@ -160,8 +160,8 @@ export function logResponseDetails(response, phase = 'response') {
     timestamp: new Date().toISOString(),
   };
 
-  console.log(`[RESPONSE ${phase.toUpperCase()}]`, logData);
-  logInfo(`[RESPONSE ${phase.toUpperCase()}]`, logData);
+  console.log(`[JWT Auth] Response (${phase}):`, logData);
+  logInfo(`[JWT Auth] Response (${phase})`, logData);
   logToServer(`response_${phase}`, {
     url: logData.url,
     method: logData.method,
@@ -192,8 +192,8 @@ export function logErrorResponse(error) {
       : authHeader;
   }
 
-  console.error('[RESPONSE ERROR]', logData);
-  logError('[RESPONSE ERROR]', logData);
+  console.error('[JWT Auth] Response Error:', logData);
+  logError('[JWT Auth] Response Error', logData);
   logToServer('response_error', {
     url: logData.url,
     method: logData.method,

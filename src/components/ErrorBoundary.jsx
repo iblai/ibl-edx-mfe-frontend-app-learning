@@ -47,7 +47,7 @@ export class ErrorBoundary extends React.Component {
       // Render custom fallback UI or default ErrorPage
       const errorMessage = this.state.error?.message || 'An unexpected error occurred.';
 
-      console.error('[ErrorBoundary] Rendering error page', {
+      console.error('[JWT Auth] ErrorBoundary: Rendering error page', {
         error: this.state.error,
         errorInfo: this.state.errorInfo,
       });
