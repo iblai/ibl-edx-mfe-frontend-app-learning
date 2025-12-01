@@ -5,41 +5,24 @@
 
 import { logToServer } from './server-logger';
 
-// Import logging functions - these may be null/undefined if frontend-platform hasn't initialized
-// We import them but wrap all calls in try-catch and null checks
-// Note: The import itself should work, but the functions may be null if logging isn't initialized yet
-import * as loggingModule from '@edx/frontend-platform/logging';
-
-// Extract functions - they may be null if frontend-platform hasn't initialized logging yet
-const logError = loggingModule?.logError;
-const logInfo = loggingModule?.logInfo;
-
 /**
- * Safe wrapper for logError - checks if it exists before calling
+ * Safe wrapper for logError - no-op for now
+ * We removed frontend-platform logging from this file to avoid initialization errors
+ * Console logging is sufficient for debugging and always works
  */
 function safeLogError(message, data) {
-  if (logError && typeof logError === 'function') {
-    try {
-      logError(message, data);
-    } catch (e) {
-      // If logError fails, just use console
-      console.error('[JWT Auth] logError failed:', e);
-    }
-  }
+  // No-op - console.error is already called, which is sufficient
+  // Frontend-platform logging can be added later once initialization is stable
 }
 
 /**
- * Safe wrapper for logInfo - checks if it exists before calling
+ * Safe wrapper for logInfo - no-op for now
+ * We removed frontend-platform logging from this file to avoid initialization errors
+ * Console logging is sufficient for debugging and always works
  */
 function safeLogInfo(message, data) {
-  if (logInfo && typeof logInfo === 'function') {
-    try {
-      logInfo(message, data);
-    } catch (e) {
-      // If logInfo fails, just use console
-      console.warn('[JWT Auth] logInfo failed:', e);
-    }
-  }
+  // No-op - console.log is already called, which is sufficient
+  // Frontend-platform logging can be added later once initialization is stable
 }
 
 /**
