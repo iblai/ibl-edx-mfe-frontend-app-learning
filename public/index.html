@@ -169,22 +169,18 @@
           const url = xhr._jwtAuthUrl;
           const method = xhr._jwtAuthMethod;
 
-          // Check if XHR will send cookies
-          const xhrWillSendCookies = xhr.withCredentials === true;
-          const xhrIsCrossOrigin = url && !url.startsWith(window.location.origin);
+          // Check if XHR will send cookies (store on xhr object to access in listeners)
+          xhr._jwtAuthWillSendCookies = xhr.withCredentials === true;
+          xhr._jwtAuthIsCrossOrigin = url && !url.startsWith(window.location.origin);
 
           console.log('[JWT Auth] XHR request:', {
             url: url,
             method: method,
             withCredentials: xhr.withCredentials,
-            willSendCookies: xhrWillSendCookies,
-            isCrossOrigin: xhrIsCrossOrigin,
+            willSendCookies: xhr._jwtAuthWillSendCookies,
+            isCrossOrigin: xhr._jwtAuthIsCrossOrigin,
             timestamp: new Date().toISOString(),
           });
-
-          // Check if XHR will send cookies
-          const xhrWillSendCookies = xhr.withCredentials === true;
-          const xhrIsCrossOrigin = url && !url.startsWith(window.location.origin);
 
           xhr.addEventListener('load', function() {
             console.log('[JWT Auth] XHR response:', {
