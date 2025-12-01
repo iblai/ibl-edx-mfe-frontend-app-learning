@@ -103,9 +103,13 @@
 
         console.log('[JWT Auth] Early error handlers installed (before any scripts load)');
 
+        // Initialize network request counter
+        window.__NETWORK_REQUEST_COUNT__ = 0;
+
         // Intercept fetch requests to log network errors
         const originalFetch = window.fetch;
         window.fetch = function(...args) {
+          window.__NETWORK_REQUEST_COUNT__ = (window.__NETWORK_REQUEST_COUNT__ || 0) + 1;
           const url = args[0];
           const options = args[1] || {};
 
@@ -165,6 +169,7 @@
         };
 
         XMLHttpRequest.prototype.send = function(...args) {
+          window.__NETWORK_REQUEST_COUNT__ = (window.__NETWORK_REQUEST_COUNT__ || 0) + 1;
           const xhr = this;
           const url = xhr._jwtAuthUrl;
           const method = xhr._jwtAuthMethod;

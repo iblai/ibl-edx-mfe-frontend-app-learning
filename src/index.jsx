@@ -69,6 +69,7 @@ try {
 let interceptorCleanup = null;
 
 subscribe(APP_READY, () => {
+  window.__APP_READY_FIRED__ = true;
   logInitializationMilestone('APP_READY event fired');
 
   // Initialize global auth interceptor
@@ -223,6 +224,18 @@ subscribe(APP_READY, () => {
 });
 
 subscribe(APP_INIT_ERROR, (error) => {
+  // Log immediately when handler is called - this happens first
+  console.error('[JWT Auth] APP_INIT_ERROR handler called - FIRST LOG', {
+    error,
+    errorType: typeof error,
+    errorConstructor: error?.constructor?.name,
+    errorKeys: error && typeof error === 'object' ? Object.keys(error) : [],
+    errorString: String(error),
+    timestamp: new Date().toISOString(),
+  });
+
+  // Store the error immediately for later reference
+  window.__FRONTEND_PLATFORM_INIT_ERROR__ = error;
   // Note: frontend-platform may pass the event name string instead of an Error object
   // The actual error might be in a different format or stored elsewhere
   const isEventNameString = typeof error === 'string' && error === 'APP.INIT_ERROR';
@@ -243,6 +256,7 @@ subscribe(APP_INIT_ERROR, (error) => {
     // Check for common error storage locations
     windowError: window.__INIT_ERROR__ || null,
     lastError: window.lastError || null,
+    frontendPlatformError: window.__FRONTEND_PLATFORM_INIT_ERROR__ || null,
   };
 
   // Try to stringify the error (may fail for circular references)
@@ -270,6 +284,11 @@ subscribe(APP_INIT_ERROR, (error) => {
       console.error('[JWT Auth] APP_INIT_ERROR - Found stored error:', window.__FRONTEND_PLATFORM_ERROR__);
     }
 
+    if (window.__FRONTEND_PLATFORM_INIT_ERROR__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Found intercepted error:', window.__FRONTEND_PLATFORM_INIT_ERROR__);
+      errorDetails.interceptedError = window.__FRONTEND_PLATFORM_INIT_ERROR__;
+    }
+
     // Check for network errors
     if (window.__LAST_FETCH_ERROR__) {
       console.error('[JWT Auth] APP_INIT_ERROR - Last fetch error:', window.__LAST_FETCH_ERROR__);
@@ -295,6 +314,33 @@ subscribe(APP_INIT_ERROR, (error) => {
       console.error('[JWT Auth] APP_INIT_ERROR - Last error:', window.__LAST_ERROR__);
       errorDetails.lastError = window.__LAST_ERROR__;
     }
+
+    // Check for promise rejections
+    if (window.__LAST_PROMISE_REJECTION__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Last promise rejection:', window.__LAST_PROMISE_REJECTION__);
+      errorDetails.lastPromiseRejection = window.__LAST_PROMISE_REJECTION__;
+    }
+
+    // Check for initialization-specific errors
+    if (window.__INIT_SETUP_ERROR__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Init setup error:', window.__INIT_SETUP_ERROR__);
+      errorDetails.initSetupError = window.__INIT_SETUP_ERROR__;
+    }
+
+    if (window.__INIT_SYNC_ERROR__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Init sync error:', window.__INIT_SYNC_ERROR__);
+      errorDetails.initSyncError = window.__INIT_SYNC_ERROR__;
+    }
+
+    if (window.__INIT_ASYNC_ERROR__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Init async error:', window.__INIT_ASYNC_ERROR__);
+      errorDetails.initAsyncError = window.__INIT_ASYNC_ERROR__;
+    }
+
+    if (window.__CONFIG_HANDLER_ERROR__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Config handler error:', window.__CONFIG_HANDLER_ERROR__);
+      errorDetails.configHandlerError = window.__CONFIG_HANDLER_ERROR__;
+    }
   }
 
   const root = createRoot(document.getElementById('root'));
@@ -315,6 +361,17 @@ subscribe(APP_INIT_ERROR, (error) => {
 });
 
 logInitializationMilestone('About to initialize frontend-platform');
+
+// Store initialization start time and network request count
+const initStartTime = Date.now();
+const initialNetworkRequestCount = (window.__NETWORK_REQUEST_COUNT__ || 0);
+console.log('[JWT Auth] Starting frontend-platform initialize()', {
+  timestamp: new Date().toISOString(),
+  url: window.location.href,
+  referrer: document.referrer,
+  inIframe: window.self !== window.top,
+  initialNetworkRequestCount,
+});
 
 // Wrap initialize in try-catch to catch any synchronous errors
 try {
@@ -365,12 +422,35 @@ try {
             errorStack: configError?.stack,
             errorName: configError?.name,
           });
+          // Store error globally
+          window.__CONFIG_HANDLER_ERROR__ = configError;
           throw configError; // Re-throw to let frontend-platform handle it
         }
       },
     },
     messages,
   });
+
+  // Log when initialize() returns (it's synchronous, but frontend-platform may do async work)
+  const initDuration = Date.now() - initStartTime;
+  const networkRequestsDuringInit = (window.__NETWORK_REQUEST_COUNT__ || 0) - initialNetworkRequestCount;
+  console.log('[JWT Auth] Initialize() returned', {
+    duration: initDuration,
+    networkRequestsDuringInit,
+    timestamp: new Date().toISOString(),
+  });
+
+  // Set a timeout to check if APP_INIT_ERROR fires after initialization
+  setTimeout(() => {
+    if (!window.__APP_READY_FIRED__) {
+      console.warn('[JWT Auth] APP_READY not fired after 5 seconds - checking for errors', {
+        hasInitError: !!window.__FRONTEND_PLATFORM_INIT_ERROR__,
+        hasNetworkErrors: !!(window.__LAST_FETCH_ERROR__ || window.__LAST_XHR_ERROR__),
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }, 5000);
+
 } catch (initError) {
   // Catch any synchronous errors during initialize()
   console.error('[JWT Auth] Synchronous error during initialize():', initError);
@@ -380,5 +460,7 @@ try {
     errorName: initError?.name,
     errorType: typeof initError,
   });
+  // Store error globally
+  window.__INIT_SYNC_ERROR__ = initError;
   // The error will be handled by APP_INIT_ERROR subscriber
 }
