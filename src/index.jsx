@@ -40,12 +40,37 @@ import { JWTAuthDebugger } from './hooks/JWTAuthDebugger';
 import { AuthenticatedHttpClientProvider } from './contexts/AuthenticatedHttpClientContext';
 import { setupAuthInterceptor } from './utils/setupAuthInterceptor';
 import { logInfo } from '@edx/frontend-platform/logging';
+import { setupGlobalErrorHandlers, logInitializationMilestone } from './utils/error-logging';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+// Set up global error handlers IMMEDIATELY - before anything else runs
+// This catches errors that occur before React mounts
+try {
+  setupGlobalErrorHandlers();
+  logInitializationMilestone('index.jsx loaded - global error handlers installed', {
+    documentReadyState: document.readyState,
+    hasRootElement: !!document.getElementById('root'),
+    url: window.location.href,
+    referrer: document.referrer,
+    inIframe: window.self !== window.top,
+  });
+} catch (error) {
+  // Even if error logging setup fails, try to log it
+  console.error('[CRITICAL] Failed to setup error logging:', error);
+  try {
+    setupGlobalErrorHandlers();
+  } catch (e) {
+    console.error('[CRITICAL] Failed to setup error handlers:', e);
+  }
+}
 
 // Set up global auth interceptor before app initializes
 // This allows API functions to use getAuthenticatedHttpClient() without modification
 let interceptorCleanup = null;
 
 subscribe(APP_READY, () => {
+  logInitializationMilestone('APP_READY event fired');
+
   // Initialize global auth interceptor
   // This sets up interceptors on getAuthenticatedHttpClient() to handle JWT tokens
   // Use setTimeout to ensure frontend-platform is fully initialized
@@ -73,19 +98,22 @@ subscribe(APP_READY, () => {
       console.error('[JWT Auth] Failed to setup auth interceptor:', error);
     }
   }
+  logInitializationMilestone('About to render React app');
+
   const root = createRoot(document.getElementById('root'));
 
   root.render(
     <StrictMode>
-      <AppProvider store={store}>
-        <Helmet>
-          <link rel="shortcut icon" href={getConfig().FAVICON_URL} type="image/x-icon" />
-        </Helmet>
-        <PathFixesProvider>
-          <NoticesProvider>
-            <AuthenticatedHttpClientProvider>
-              <UserMessagesProvider>
-                <JWTAuthDebugger />
+      <ErrorBoundary>
+        <AppProvider store={store}>
+          <Helmet>
+            <link rel="shortcut icon" href={getConfig().FAVICON_URL} type="image/x-icon" />
+          </Helmet>
+          <PathFixesProvider>
+            <NoticesProvider>
+              <AuthenticatedHttpClientProvider>
+                <UserMessagesProvider>
+                  <JWTAuthDebugger />
                 <div className="app-container">
                 <Routes>
                   <Route path="*" element={<PageWrap><PageNotFound /></PageWrap>} />
@@ -187,23 +215,37 @@ subscribe(APP_READY, () => {
           </NoticesProvider>
         </PathFixesProvider>
       </AppProvider>
+      </ErrorBoundary>
     </StrictMode>,
   );
+
+  logInitializationMilestone('React app rendered');
 });
 
 subscribe(APP_INIT_ERROR, (error) => {
+  logInitializationMilestone('APP_INIT_ERROR event fired', {
+    errorMessage: error.message,
+    errorName: error.name,
+    errorStack: error.stack,
+  });
+
   const root = createRoot(document.getElementById('root'));
 
   root.render(
     <StrictMode>
-      <ErrorPage message={error.message} />
+      <ErrorBoundary>
+        <ErrorPage message={error.message} />
+      </ErrorBoundary>
     </StrictMode>,
   );
 });
 
+logInitializationMilestone('About to initialize frontend-platform');
+
 initialize({
   handlers: {
     config: () => {
+      logInitializationMilestone('Config handler called');
       mergeConfig({
         CONTACT_URL: process.env.CONTACT_URL || null,
         CREDENTIALS_BASE_URL: process.env.CREDENTIALS_BASE_URL || null,

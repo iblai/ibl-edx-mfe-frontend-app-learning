@@ -1,5 +1,6 @@
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { logInfo, logError } from '@edx/frontend-platform/logging';
+import { logRequestDetails, logResponseDetails, logErrorResponse } from './error-logging';
 
 /**
  * Global state for JWT authentication.
@@ -83,6 +84,9 @@ export function setupAuthInterceptor() {
         const { mode, jwtToken } = globalAuthState;
         const url = config.url || config.baseURL || 'unknown';
 
+        // Log detailed request information including ALL headers
+        logRequestDetails(config, 'request');
+
         // Log interceptor state for debugging
         console.log('[JWT Auth] Request interceptor called', {
           mode,
@@ -148,10 +152,15 @@ export function setupAuthInterceptor() {
     // Response interceptor for error handling
     const responseInterceptorId = client.interceptors.response.use(
       (response) => {
+        // Log successful response details
+        logResponseDetails(response, 'success');
         // Success response - pass through
         return response;
       },
       (error) => {
+        // Log error response details with full headers
+        logErrorResponse(error);
+
         // Handle authentication errors
         const status = error?.response?.status;
         const { mode, jwtToken } = globalAuthState;
