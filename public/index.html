@@ -190,8 +190,8 @@
               statusText: xhr.statusText,
               readyState: xhr.readyState,
               withCredentials: xhr.withCredentials,
-              willSendCookies: xhrWillSendCookies,
-              isCrossOrigin: xhrIsCrossOrigin,
+              willSendCookies: xhr._jwtAuthWillSendCookies,
+              isCrossOrigin: xhr._jwtAuthIsCrossOrigin,
               timestamp: new Date().toISOString(),
             });
           });
