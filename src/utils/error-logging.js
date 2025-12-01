@@ -3,8 +3,44 @@
  * These run BEFORE React mounts to catch early initialization errors.
  */
 
-import { logError, logInfo } from '@edx/frontend-platform/logging';
 import { logToServer } from './server-logger';
+
+// Import logging functions - these may be null/undefined if frontend-platform hasn't initialized
+// We import them but wrap all calls in try-catch and null checks
+// Note: The import itself should work, but the functions may be null if logging isn't initialized yet
+import * as loggingModule from '@edx/frontend-platform/logging';
+
+// Extract functions - they may be null if frontend-platform hasn't initialized logging yet
+const logError = loggingModule?.logError;
+const logInfo = loggingModule?.logInfo;
+
+/**
+ * Safe wrapper for logError - checks if it exists before calling
+ */
+function safeLogError(message, data) {
+  if (logError && typeof logError === 'function') {
+    try {
+      logError(message, data);
+    } catch (e) {
+      // If logError fails, just use console
+      console.error('[JWT Auth] logError failed:', e);
+    }
+  }
+}
+
+/**
+ * Safe wrapper for logInfo - checks if it exists before calling
+ */
+function safeLogInfo(message, data) {
+  if (logInfo && typeof logInfo === 'function') {
+    try {
+      logInfo(message, data);
+    } catch (e) {
+      // If logInfo fails, just use console
+      console.warn('[JWT Auth] logInfo failed:', e);
+    }
+  }
+}
 
 /**
  * Logs detailed information about an error, including stack trace and context.
@@ -26,8 +62,8 @@ function logErrorDetails(error, context = {}) {
   console.error('[JWT Auth] Error:', errorInfo);
   console.error('[JWT Auth] Error Stack trace:', error?.stack);
 
-  // Frontend-platform logging
-  logError('[JWT Auth] Error', errorInfo);
+  // Frontend-platform logging (safe - checks if available)
+  safeLogError('[JWT Auth] Error', errorInfo);
 
   // Server logging (for Docker logs)
   logToServer('error_occurred', {
@@ -48,7 +84,7 @@ function logErrorDetails(error, context = {}) {
 export function setupGlobalErrorHandlers() {
   // Log that we're setting up error handlers
   console.log('[JWT Auth] Setting up global error handlers');
-  logInfo('[JWT Auth] Setting up global error handlers', {
+  safeLogInfo('[JWT Auth] Setting up global error handlers', {
     url: window.location.href,
     referrer: document.referrer,
     inIframe: window.self !== window.top,
@@ -109,7 +145,7 @@ export function logInitializationMilestone(milestone, data = {}) {
   };
 
   console.log(`[JWT Auth] Init: ${milestone}`, logData);
-  logInfo(`[JWT Auth] Init: ${milestone}`, logData);
+  safeLogInfo(`[JWT Auth] Init: ${milestone}`, logData);
   logToServer('init_milestone', { milestone, ...data });
 }
 
@@ -136,7 +172,7 @@ export function logRequestDetails(config, phase = 'request') {
   }
 
   console.log(`[JWT Auth] Request (${phase}):`, logData);
-  logInfo(`[JWT Auth] Request (${phase})`, logData);
+  safeLogInfo(`[JWT Auth] Request (${phase})`, logData);
   logToServer(`request_${phase}`, {
     url: logData.url,
     method: logData.method,
@@ -161,7 +197,7 @@ export function logResponseDetails(response, phase = 'response') {
   };
 
   console.log(`[JWT Auth] Response (${phase}):`, logData);
-  logInfo(`[JWT Auth] Response (${phase})`, logData);
+  safeLogInfo(`[JWT Auth] Response (${phase})`, logData);
   logToServer(`response_${phase}`, {
     url: logData.url,
     method: logData.method,
@@ -193,7 +229,7 @@ export function logErrorResponse(error) {
   }
 
   console.error('[JWT Auth] Response Error:', logData);
-  logError('[JWT Auth] Response Error', logData);
+  safeLogError('[JWT Auth] Response Error', logData);
   logToServer('response_error', {
     url: logData.url,
     method: logData.method,
