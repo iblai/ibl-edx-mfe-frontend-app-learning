@@ -5,6 +5,105 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="shortcut icon" href="<%=htmlWebpackPlugin.options.FAVICON_URL%>" type="image/x-icon" />
+    <!-- EARLY ERROR LOGGING: Runs before any other JavaScript -->
+    <script>
+      (function() {
+        'use strict';
+        // Log that HTML is loading
+        console.log('[JWT Auth] HTML page loading', {
+          url: window.location.href,
+          referrer: document.referrer,
+          inIframe: window.self !== window.top,
+          readyState: document.readyState,
+          timestamp: new Date().toISOString()
+        });
+
+        // Set up error handlers IMMEDIATELY - before any other scripts load
+        // This catches errors that occur during script loading/module initialization
+
+        // Catch synchronous JavaScript errors
+        window.onerror = function(message, source, lineno, colno, error) {
+          console.error('[JWT Auth] Error (window.onerror):', {
+            message: message,
+            source: source,
+            lineno: lineno,
+            colno: colno,
+            error: error ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack
+            } : null,
+            url: window.location.href,
+            referrer: document.referrer,
+            inIframe: window.self !== window.top,
+            timestamp: new Date().toISOString()
+          });
+          return false; // Don't prevent default error handling
+        };
+
+        // Catch unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+          var error = event.reason instanceof Error
+            ? event.reason
+            : new Error(String(event.reason));
+
+          console.error('[JWT Auth] Error (unhandledrejection):', {
+            message: error.message,
+            name: error.name,
+            stack: error.stack,
+            reason: event.reason,
+            url: window.location.href,
+            referrer: document.referrer,
+            inIframe: window.self !== window.top,
+            timestamp: new Date().toISOString()
+          });
+        });
+
+        // Catch resource loading errors (scripts, images, etc.)
+        window.addEventListener('error', function(event) {
+          // Only log resource errors (not JavaScript errors, which are handled by onerror)
+          if (event.target !== window && event.target !== document) {
+            console.error('[JWT Auth] Error (resource load):', {
+              tagName: event.target.tagName,
+              src: event.target.src || event.target.href,
+              type: event.target.type,
+              url: window.location.href,
+              referrer: document.referrer,
+              inIframe: window.self !== window.top,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }, true); // Use capture phase
+
+        // Log when DOM is ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function() {
+            console.log('[JWT Auth] DOMContentLoaded fired', {
+              url: window.location.href,
+              hasRootElement: !!document.getElementById('root'),
+              timestamp: new Date().toISOString()
+            });
+          });
+        } else {
+          console.log('[JWT Auth] DOM already ready', {
+            url: window.location.href,
+            hasRootElement: !!document.getElementById('root'),
+            readyState: document.readyState,
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Log when window loads
+        window.addEventListener('load', function() {
+          console.log('[JWT Auth] Window load event fired', {
+            url: window.location.href,
+            timestamp: new Date().toISOString()
+          });
+        });
+
+        console.log('[JWT Auth] Early error handlers installed (before any scripts load)');
+      })();
+    </script>
     <script>
       function isIframed() {
         return window.self !== window.top;
@@ -12,12 +111,12 @@
       function addCSSLink(cssUrl) {
         // Create a new link element
         var link = document.createElement('link');
-        
+
         // Set the attributes for the link element
         link.rel = 'stylesheet';
         link.type = 'text/css';
         link.href = cssUrl;
-        
+
         // Append the link element to the head
         document.head.appendChild(link);
       }
@@ -31,11 +130,11 @@
 
         // Create a new script element
         var script = document.createElement('script');
-        
+
         // Set the attributes for the script element
         script.type = 'text/javascript';
         script.src = jsUrl;
-        
+
         // Append the script element to the head
         document.head.appendChild(script);
       }
