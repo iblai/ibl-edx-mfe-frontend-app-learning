@@ -207,6 +207,9 @@
               status: xhr.status,
               statusText: xhr.statusText,
               readyState: xhr.readyState,
+              withCredentials: xhr.withCredentials,
+              willSendCookies: xhr._jwtAuthWillSendCookies,
+              isCrossOrigin: xhr._jwtAuthIsCrossOrigin,
               timestamp: new Date().toISOString(),
             });
             window.__LAST_XHR_ERROR__ = {
@@ -214,6 +217,9 @@
               method: method,
               status: xhr.status,
               statusText: xhr.statusText,
+              withCredentials: xhr.withCredentials,
+              willSendCookies: xhr._jwtAuthWillSendCookies,
+              isCrossOrigin: xhr._jwtAuthIsCrossOrigin,
               timestamp: new Date().toISOString(),
             };
           });
