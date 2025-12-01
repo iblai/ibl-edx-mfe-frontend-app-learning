@@ -109,11 +109,17 @@
           const url = args[0];
           const options = args[1] || {};
 
+          // Check if cookies will be sent (credentials mode)
+          const credentialsMode = options.credentials || 'same-origin';
+          const willSendCookies = credentialsMode === 'include' || (credentialsMode === 'same-origin' && typeof url === 'string' && url.startsWith(window.location.origin));
+
           console.log('[JWT Auth] Fetch request:', {
             url: typeof url === 'string' ? url : url?.url || url?.toString(),
             method: options.method || 'GET',
+            credentials: credentialsMode,
+            willSendCookies: willSendCookies,
+            isCrossOrigin: typeof url === 'string' ? !url.startsWith(window.location.origin) : false,
             headers: options.headers,
-            credentials: options.credentials,
             timestamp: new Date().toISOString(),
           });
 
@@ -163,11 +169,22 @@
           const url = xhr._jwtAuthUrl;
           const method = xhr._jwtAuthMethod;
 
+          // Check if XHR will send cookies
+          const xhrWillSendCookies = xhr.withCredentials === true;
+          const xhrIsCrossOrigin = url && !url.startsWith(window.location.origin);
+
           console.log('[JWT Auth] XHR request:', {
             url: url,
             method: method,
+            withCredentials: xhr.withCredentials,
+            willSendCookies: xhrWillSendCookies,
+            isCrossOrigin: xhrIsCrossOrigin,
             timestamp: new Date().toISOString(),
           });
+
+          // Check if XHR will send cookies
+          const xhrWillSendCookies = xhr.withCredentials === true;
+          const xhrIsCrossOrigin = url && !url.startsWith(window.location.origin);
 
           xhr.addEventListener('load', function() {
             console.log('[JWT Auth] XHR response:', {
@@ -176,6 +193,9 @@
               status: xhr.status,
               statusText: xhr.statusText,
               readyState: xhr.readyState,
+              withCredentials: xhr.withCredentials,
+              willSendCookies: xhrWillSendCookies,
+              isCrossOrigin: xhrIsCrossOrigin,
               timestamp: new Date().toISOString(),
             });
           });
