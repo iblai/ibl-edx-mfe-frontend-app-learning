@@ -341,6 +341,12 @@ subscribe(APP_INIT_ERROR, (error) => {
       console.error('[JWT Auth] APP_INIT_ERROR - Config handler error:', window.__CONFIG_HANDLER_ERROR__);
       errorDetails.configHandlerError = window.__CONFIG_HANDLER_ERROR__;
     }
+
+    // Check for login_refresh response (critical for authentication)
+    if (window.__LOGIN_REFRESH_RESPONSE__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Login refresh response:', window.__LOGIN_REFRESH_RESPONSE__);
+      errorDetails.loginRefreshResponse = window.__LOGIN_REFRESH_RESPONSE__;
+    }
   }
 
   const root = createRoot(document.getElementById('root'));

@@ -127,14 +127,52 @@
             timestamp: new Date().toISOString(),
           });
 
+          const isLoginRefresh = typeof url === 'string' && (url.includes('login_refresh') || url.includes('login-refresh'));
+          const isAuthRelated = typeof url === 'string' && (url.includes('auth') || url.includes('user') || url.includes('login'));
+
           return originalFetch.apply(this, args)
-            .then(response => {
+            .then(async (response) => {
+              // Try to capture response body for login_refresh and auth-related requests
+              let responseBodyPreview = null;
+              let responseBodyError = null;
+
+              if (isLoginRefresh || isAuthRelated) {
+                try {
+                  // Clone response to read body without consuming it
+                  const clonedResponse = response.clone();
+                  const responseText = await clonedResponse.text();
+                  responseBodyPreview = responseText.length > 500
+                    ? responseText.substring(0, 500) + '...'
+                    : responseText;
+
+                  // Store login_refresh response
+                  if (isLoginRefresh) {
+                    window.__LOGIN_REFRESH_RESPONSE__ = {
+                      url: typeof url === 'string' ? url : url?.url || url?.toString(),
+                      status: response.status,
+                      statusText: response.statusText,
+                      responseBody: responseText,
+                      responseBodyPreview: responseBodyPreview,
+                      headers: Object.fromEntries(response.headers.entries()),
+                      timestamp: new Date().toISOString(),
+                    };
+                    console.log('[JWT Auth] LOGIN_REFRESH fetch response stored:', window.__LOGIN_REFRESH_RESPONSE__);
+                  }
+                } catch (e) {
+                  responseBodyError = 'Could not read response body: ' + e.message;
+                }
+              }
+
               console.log('[JWT Auth] Fetch response:', {
                 url: typeof url === 'string' ? url : url?.url || url?.toString(),
                 status: response.status,
                 statusText: response.statusText,
                 ok: response.ok,
                 headers: Object.fromEntries(response.headers.entries()),
+                isLoginRefresh: isLoginRefresh,
+                isAuthRelated: isAuthRelated,
+                responseBodyPreview: responseBodyPreview,
+                responseBodyError: responseBodyError,
                 timestamp: new Date().toISOString(),
               });
               return response;
@@ -188,6 +226,37 @@
           });
 
           xhr.addEventListener('load', function() {
+            // Try to capture response body for login_refresh and other auth-related requests
+            let responseBody = null;
+            let responseBodyPreview = null;
+            let responseBodyError = null;
+
+            try {
+              // Try to read response text (may not always be available)
+              if (xhr.responseText) {
+                responseBody = xhr.responseText;
+                // Truncate for logging if too long
+                responseBodyPreview = responseBody.length > 500
+                  ? responseBody.substring(0, 500) + '...'
+                  : responseBody;
+              } else if (xhr.response) {
+                // Try to stringify response object
+                try {
+                  responseBody = JSON.stringify(xhr.response);
+                  responseBodyPreview = responseBody.length > 500
+                    ? responseBody.substring(0, 500) + '...'
+                    : responseBody;
+                } catch (e) {
+                  responseBodyError = 'Could not stringify response: ' + e.message;
+                }
+              }
+            } catch (e) {
+              responseBodyError = 'Could not read response: ' + e.message;
+            }
+
+            const isLoginRefresh = url && (url.includes('login_refresh') || url.includes('login-refresh'));
+            const isAuthRelated = url && (url.includes('auth') || url.includes('user') || url.includes('login'));
+
             console.log('[JWT Auth] XHR response:', {
               url: url,
               method: method,
@@ -197,8 +266,31 @@
               withCredentials: xhr.withCredentials,
               willSendCookies: xhr._jwtAuthWillSendCookies,
               isCrossOrigin: xhr._jwtAuthIsCrossOrigin,
+              isLoginRefresh: isLoginRefresh,
+              isAuthRelated: isAuthRelated,
+              responseType: xhr.responseType,
+              responseBodyPreview: responseBodyPreview,
+              responseBodyLength: responseBody ? responseBody.length : 0,
+              responseBodyError: responseBodyError,
+              contentType: xhr.getResponseHeader('Content-Type'),
               timestamp: new Date().toISOString(),
             });
+
+            // For login_refresh, store the full response for debugging
+            if (isLoginRefresh) {
+              window.__LOGIN_REFRESH_RESPONSE__ = {
+                url: url,
+                status: xhr.status,
+                statusText: xhr.statusText,
+                responseBody: responseBody,
+                responseBodyPreview: responseBodyPreview,
+                headers: {
+                  contentType: xhr.getResponseHeader('Content-Type'),
+                },
+                timestamp: new Date().toISOString(),
+              };
+              console.log('[JWT Auth] LOGIN_REFRESH response stored:', window.__LOGIN_REFRESH_RESPONSE__);
+            }
           });
 
           xhr.addEventListener('error', function() {
