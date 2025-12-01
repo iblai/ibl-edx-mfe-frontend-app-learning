@@ -223,6 +223,10 @@ subscribe(APP_READY, () => {
 });
 
 subscribe(APP_INIT_ERROR, (error) => {
+  // Note: frontend-platform may pass the event name string instead of an Error object
+  // The actual error might be in a different format or stored elsewhere
+  const isEventNameString = typeof error === 'string' && error === 'APP.INIT_ERROR';
+
   // Capture all possible error information
   const errorDetails = {
     // Standard Error properties
@@ -232,9 +236,13 @@ subscribe(APP_INIT_ERROR, (error) => {
     // String representation
     errorString: String(error),
     errorType: typeof error,
+    isEventNameString,
     // If error is an object, try to capture all properties
     errorKeys: error && typeof error === 'object' ? Object.keys(error) : [],
     errorJSON: null,
+    // Check for common error storage locations
+    windowError: window.__INIT_ERROR__ || null,
+    lastError: window.lastError || null,
   };
 
   // Try to stringify the error (may fail for circular references)
@@ -252,12 +260,29 @@ subscribe(APP_INIT_ERROR, (error) => {
   console.error('[JWT Auth] APP_INIT_ERROR - Raw error object:', error);
   console.error('[JWT Auth] APP_INIT_ERROR - Error constructor:', error?.constructor?.name);
 
+  // If error is just the event name string, check for actual error elsewhere
+  if (isEventNameString) {
+    console.error('[JWT Auth] APP_INIT_ERROR - Error is event name string, checking for actual error...');
+    console.error('[JWT Auth] APP_INIT_ERROR - window.onerror last error:', window.onerror?.toString());
+
+    // Check if there's an error stored globally
+    if (window.__FRONTEND_PLATFORM_ERROR__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Found stored error:', window.__FRONTEND_PLATFORM_ERROR__);
+    }
+  }
+
   const root = createRoot(document.getElementById('root'));
 
   root.render(
     <StrictMode>
       <ErrorBoundary>
-        <ErrorPage message={error?.message || 'An unexpected error occurred during initialization'} />
+        <ErrorPage
+          message={
+            isEventNameString
+              ? 'An unexpected error occurred during initialization. Check console for details.'
+              : (error?.message || 'An unexpected error occurred during initialization')
+          }
+        />
       </ErrorBoundary>
     </StrictMode>,
   );
@@ -265,11 +290,14 @@ subscribe(APP_INIT_ERROR, (error) => {
 
 logInitializationMilestone('About to initialize frontend-platform');
 
-initialize({
-  handlers: {
-    config: () => {
-      logInitializationMilestone('Config handler called');
-      mergeConfig({
+// Wrap initialize in try-catch to catch any synchronous errors
+try {
+  initialize({
+    handlers: {
+      config: () => {
+        logInitializationMilestone('Config handler called');
+        try {
+          mergeConfig({
         CONTACT_URL: process.env.CONTACT_URL || null,
         CREDENTIALS_BASE_URL: process.env.CREDENTIALS_BASE_URL || null,
         CREDIT_HELP_LINK_URL: process.env.CREDIT_HELP_LINK_URL || null,
@@ -304,7 +332,27 @@ initialize({
           : [],
         JWT_TEST_TOKEN: process.env.JWT_TEST_TOKEN || null, // TEST MODE: Hardcoded token for testing
       }, 'LearnerAppConfig');
+        } catch (configError) {
+          console.error('[JWT Auth] Error in config handler:', configError);
+          logInitializationMilestone('Config handler error', {
+            errorMessage: configError?.message || String(configError),
+            errorStack: configError?.stack,
+            errorName: configError?.name,
+          });
+          throw configError; // Re-throw to let frontend-platform handle it
+        }
+      },
     },
-  },
-  messages,
-});
+    messages,
+  });
+} catch (initError) {
+  // Catch any synchronous errors during initialize()
+  console.error('[JWT Auth] Synchronous error during initialize():', initError);
+  logInitializationMilestone('Initialize() synchronous error', {
+    errorMessage: initError?.message || String(initError),
+    errorStack: initError?.stack,
+    errorName: initError?.name,
+    errorType: typeof initError,
+  });
+  // The error will be handled by APP_INIT_ERROR subscriber
+}

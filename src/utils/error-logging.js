@@ -75,7 +75,20 @@ export function setupGlobalErrorHandlers() {
 
   // Catch synchronous JavaScript errors
   window.onerror = (message, source, lineno, colno, error) => {
-    logErrorDetails(error || new Error(message), {
+    const errorObj = error || new Error(message);
+
+    // Store error globally so APP_INIT_ERROR handler can access it
+    window.__INIT_ERROR__ = errorObj;
+    window.__LAST_ERROR__ = {
+      message,
+      source,
+      lineno,
+      colno,
+      error: errorObj,
+      timestamp: new Date().toISOString(),
+    };
+
+    logErrorDetails(errorObj, {
       source,
       lineno,
       colno,
@@ -90,6 +103,14 @@ export function setupGlobalErrorHandlers() {
     const error = event.reason instanceof Error
       ? event.reason
       : new Error(String(event.reason));
+
+    // Store error globally so APP_INIT_ERROR handler can access it
+    window.__INIT_ERROR__ = error;
+    window.__LAST_PROMISE_REJECTION__ = {
+      error,
+      reason: event.reason,
+      timestamp: new Date().toISOString(),
+    };
 
     logErrorDetails(error, {
       errorType: 'unhandledrejection',
