@@ -223,18 +223,41 @@ subscribe(APP_READY, () => {
 });
 
 subscribe(APP_INIT_ERROR, (error) => {
-  logInitializationMilestone('APP_INIT_ERROR event fired', {
-    errorMessage: error.message,
-    errorName: error.name,
-    errorStack: error.stack,
-  });
+  // Capture all possible error information
+  const errorDetails = {
+    // Standard Error properties
+    message: error?.message,
+    name: error?.name,
+    stack: error?.stack,
+    // String representation
+    errorString: String(error),
+    errorType: typeof error,
+    // If error is an object, try to capture all properties
+    errorKeys: error && typeof error === 'object' ? Object.keys(error) : [],
+    errorJSON: null,
+  };
+
+  // Try to stringify the error (may fail for circular references)
+  try {
+    errorDetails.errorJSON = JSON.stringify(error, Object.getOwnPropertyNames(error));
+  } catch (e) {
+    errorDetails.errorJSON = `[Could not stringify error: ${e.message}]`;
+  }
+
+  // Log detailed error information
+  console.error('[JWT Auth] APP_INIT_ERROR - Detailed error information:', errorDetails);
+  logInitializationMilestone('APP_INIT_ERROR event fired', errorDetails);
+
+  // Also log the raw error object
+  console.error('[JWT Auth] APP_INIT_ERROR - Raw error object:', error);
+  console.error('[JWT Auth] APP_INIT_ERROR - Error constructor:', error?.constructor?.name);
 
   const root = createRoot(document.getElementById('root'));
 
   root.render(
     <StrictMode>
       <ErrorBoundary>
-        <ErrorPage message={error.message} />
+        <ErrorPage message={error?.message || 'An unexpected error occurred during initialization'} />
       </ErrorBoundary>
     </StrictMode>,
   );
