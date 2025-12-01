@@ -269,6 +269,32 @@ subscribe(APP_INIT_ERROR, (error) => {
     if (window.__FRONTEND_PLATFORM_ERROR__) {
       console.error('[JWT Auth] APP_INIT_ERROR - Found stored error:', window.__FRONTEND_PLATFORM_ERROR__);
     }
+
+    // Check for network errors
+    if (window.__LAST_FETCH_ERROR__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Last fetch error:', window.__LAST_FETCH_ERROR__);
+      errorDetails.lastFetchError = window.__LAST_FETCH_ERROR__;
+    }
+
+    if (window.__LAST_XHR_ERROR__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Last XHR error:', window.__LAST_XHR_ERROR__);
+      errorDetails.lastXHRError = window.__LAST_XHR_ERROR__;
+    }
+
+    // Check for any stored errors
+    if (window.__INIT_ERROR__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Stored init error:', window.__INIT_ERROR__);
+      errorDetails.storedInitError = {
+        message: window.__INIT_ERROR__?.message,
+        name: window.__INIT_ERROR__?.name,
+        stack: window.__INIT_ERROR__?.stack,
+      };
+    }
+
+    if (window.__LAST_ERROR__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Last error:', window.__LAST_ERROR__);
+      errorDetails.lastError = window.__LAST_ERROR__;
+    }
   }
 
   const root = createRoot(document.getElementById('root'));
