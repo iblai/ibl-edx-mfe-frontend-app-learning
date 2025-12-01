@@ -103,8 +103,10 @@
 
         console.log('[JWT Auth] Early error handlers installed (before any scripts load)');
 
-        // Initialize network request counter
+        // Initialize network request counter and request tracking
         window.__NETWORK_REQUEST_COUNT__ = 0;
+        window.__ALL_NETWORK_REQUESTS__ = [];
+        window.__FAILED_NETWORK_REQUESTS__ = [];
 
         // Intercept fetch requests to log network errors
         const originalFetch = window.fetch;
@@ -163,8 +165,32 @@
                 }
               }
 
+              const requestUrl = typeof url === 'string' ? url : url?.url || url?.toString();
+              const requestInfo = {
+                type: 'fetch',
+                url: requestUrl,
+                method: options.method || 'GET',
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok,
+                isLoginRefresh: isLoginRefresh,
+                isAuthRelated: isAuthRelated,
+                timestamp: new Date().toISOString(),
+              };
+
+              // Store all requests
+              window.__ALL_NETWORK_REQUESTS__.push(requestInfo);
+
+              // Store failed requests
+              if (!response.ok || response.status >= 400) {
+                requestInfo.error = `HTTP ${response.status} ${response.statusText}`;
+                requestInfo.responseBodyPreview = responseBodyPreview;
+                window.__FAILED_NETWORK_REQUESTS__.push(requestInfo);
+                console.error('[JWT Auth] Fetch request FAILED:', requestInfo);
+              }
+
               console.log('[JWT Auth] Fetch response:', {
-                url: typeof url === 'string' ? url : url?.url || url?.toString(),
+                url: requestUrl,
                 status: response.status,
                 statusText: response.statusText,
                 ok: response.ok,
@@ -256,6 +282,30 @@
 
             const isLoginRefresh = url && (url.includes('login_refresh') || url.includes('login-refresh'));
             const isAuthRelated = url && (url.includes('auth') || url.includes('user') || url.includes('login'));
+
+            const xhrRequestInfo = {
+              type: 'xhr',
+              url: url,
+              method: method,
+              status: xhr.status,
+              statusText: xhr.statusText,
+              readyState: xhr.readyState,
+              withCredentials: xhr.withCredentials,
+              isLoginRefresh: isLoginRefresh,
+              isAuthRelated: isAuthRelated,
+              timestamp: new Date().toISOString(),
+            };
+
+            // Store all requests
+            window.__ALL_NETWORK_REQUESTS__.push(xhrRequestInfo);
+
+            // Store failed requests
+            if (xhr.status >= 400 || !xhr.status) {
+              xhrRequestInfo.error = `HTTP ${xhr.status} ${xhr.statusText || 'Unknown'}`;
+              xhrRequestInfo.responseBodyPreview = responseBodyPreview;
+              window.__FAILED_NETWORK_REQUESTS__.push(xhrRequestInfo);
+              console.error('[JWT Auth] XHR request FAILED:', xhrRequestInfo);
+            }
 
             console.log('[JWT Auth] XHR response:', {
               url: url,

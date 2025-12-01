@@ -343,6 +343,24 @@ subscribe(APP_INIT_ERROR, (error) => {
       errorDetails.configHandlerError = window.__CONFIG_HANDLER_ERROR__;
     }
 
+    // Check for ALL network requests during initialization
+    if (window.__ALL_NETWORK_REQUESTS__) {
+      console.error('[JWT Auth] APP_INIT_ERROR - All network requests during init:', {
+        totalRequests: window.__ALL_NETWORK_REQUESTS__.length,
+        requests: window.__ALL_NETWORK_REQUESTS__,
+      });
+      errorDetails.allNetworkRequests = window.__ALL_NETWORK_REQUESTS__;
+    }
+
+    // Check for failed network requests
+    if (window.__FAILED_NETWORK_REQUESTS__ && window.__FAILED_NETWORK_REQUESTS__.length > 0) {
+      console.error('[JWT Auth] APP_INIT_ERROR - FAILED network requests:', {
+        failedCount: window.__FAILED_NETWORK_REQUESTS__.length,
+        failedRequests: window.__FAILED_NETWORK_REQUESTS__,
+      });
+      errorDetails.failedNetworkRequests = window.__FAILED_NETWORK_REQUESTS__;
+    }
+
     // Check for login_refresh response (critical for authentication)
     if (window.__LOGIN_REFRESH_RESPONSE__) {
       console.error('[JWT Auth] APP_INIT_ERROR - Login refresh response:', window.__LOGIN_REFRESH_RESPONSE__);
@@ -506,6 +524,8 @@ try {
         hasInitError: !!window.__FRONTEND_PLATFORM_INIT_ERROR__,
         hasLoginRefreshResponse: !!window.__LOGIN_REFRESH_RESPONSE__,
         loginRefreshStatus: window.__LOGIN_REFRESH_RESPONSE__?.status,
+        totalNetworkRequests: window.__ALL_NETWORK_REQUESTS__?.length || 0,
+        failedNetworkRequests: window.__FAILED_NETWORK_REQUESTS__?.length || 0,
         timestamp: new Date().toISOString(),
       });
 
@@ -528,15 +548,19 @@ try {
     if (checkCount >= maxChecks || window.__APP_READY_FIRED__) {
       clearInterval(checkInterval);
       if (!window.__APP_READY_FIRED__) {
-        console.warn('[JWT Auth] APP_READY not fired after periodic checks - final status:', {
-          checkCount,
-          elapsed,
-          hasInitError: !!window.__FRONTEND_PLATFORM_INIT_ERROR__,
-          hasNetworkErrors: !!(window.__LAST_FETCH_ERROR__ || window.__LAST_XHR_ERROR__),
-          hasLoginRefreshResponse: !!window.__LOGIN_REFRESH_RESPONSE__,
-          loginRefreshResponse: window.__LOGIN_REFRESH_RESPONSE__,
-          timestamp: new Date().toISOString(),
-        });
+      console.warn('[JWT Auth] APP_READY not fired after periodic checks - final status:', {
+        checkCount,
+        elapsed,
+        hasInitError: !!window.__FRONTEND_PLATFORM_INIT_ERROR__,
+        hasNetworkErrors: !!(window.__LAST_FETCH_ERROR__ || window.__LAST_XHR_ERROR__),
+        hasLoginRefreshResponse: !!window.__LOGIN_REFRESH_RESPONSE__,
+        loginRefreshResponse: window.__LOGIN_REFRESH_RESPONSE__,
+        totalNetworkRequests: window.__ALL_NETWORK_REQUESTS__?.length || 0,
+        failedNetworkRequests: window.__FAILED_NETWORK_REQUESTS__?.length || 0,
+        allNetworkRequests: window.__ALL_NETWORK_REQUESTS__ || [],
+        failedRequests: window.__FAILED_NETWORK_REQUESTS__ || [],
+        timestamp: new Date().toISOString(),
+      });
       }
     }
   }, 500); // Check every 500ms
