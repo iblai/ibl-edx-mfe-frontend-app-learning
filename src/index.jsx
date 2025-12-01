@@ -3,6 +3,7 @@ import {
   mergeConfig,
   getConfig,
 } from '@edx/frontend-platform';
+import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 import { AppProvider, ErrorPage, PageWrap } from '@edx/frontend-platform/react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -346,6 +347,47 @@ subscribe(APP_INIT_ERROR, (error) => {
     if (window.__LOGIN_REFRESH_RESPONSE__) {
       console.error('[JWT Auth] APP_INIT_ERROR - Login refresh response:', window.__LOGIN_REFRESH_RESPONSE__);
       errorDetails.loginRefreshResponse = window.__LOGIN_REFRESH_RESPONSE__;
+
+      // Try to parse and validate the login_refresh response
+      try {
+        const responseBody = window.__LOGIN_REFRESH_RESPONSE__.responseBody;
+        if (responseBody) {
+          const parsed = JSON.parse(responseBody);
+          console.error('[JWT Auth] APP_INIT_ERROR - Parsed login_refresh response:', {
+            hasSuccess: 'success' in parsed,
+            success: parsed.success,
+            hasUserId: 'user_id' in parsed,
+            userId: parsed.user_id,
+            hasExpires: 'expires_epoch_seconds' in parsed,
+            expiresEpochSeconds: parsed.expires_epoch_seconds,
+            allKeys: Object.keys(parsed),
+            timestamp: new Date().toISOString(),
+          });
+          errorDetails.parsedLoginRefreshResponse = parsed;
+        }
+      } catch (parseError) {
+        console.error('[JWT Auth] APP_INIT_ERROR - Failed to parse login_refresh response:', {
+          error: parseError.message,
+          responseBody: window.__LOGIN_REFRESH_RESPONSE__.responseBody,
+        });
+        errorDetails.loginRefreshParseError = parseError.message;
+      }
+    }
+
+    // Try to access authenticated user state at error time
+    try {
+      const authenticatedUser = getAuthenticatedUser();
+      console.error('[JWT Auth] APP_INIT_ERROR - Authenticated user state:', {
+        hasAuthenticatedUser: !!authenticatedUser,
+        authenticatedUserKeys: authenticatedUser ? Object.keys(authenticatedUser) : [],
+      });
+      errorDetails.authenticatedUserAtError = authenticatedUser;
+    } catch (authError) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Could not access authenticated user:', {
+        error: authError.message,
+        errorStack: authError.stack,
+      });
+      errorDetails.authenticatedUserError = authError.message;
     }
   }
 
@@ -446,16 +488,58 @@ try {
     timestamp: new Date().toISOString(),
   });
 
-  // Set a timeout to check if APP_INIT_ERROR fires after initialization
-  setTimeout(() => {
-    if (!window.__APP_READY_FIRED__) {
-      console.warn('[JWT Auth] APP_READY not fired after 5 seconds - checking for errors', {
+  // Monitor authentication state and errors periodically after initialization
+  // This helps catch async errors that occur during authentication processing
+  let checkCount = 0;
+  const maxChecks = 20; // Check for 10 seconds (20 * 500ms)
+  const checkInterval = setInterval(() => {
+    checkCount++;
+    const elapsed = Date.now() - initStartTime;
+
+    try {
+      // Try to access frontend-platform's auth state
+      const authenticatedUser = getAuthenticatedUser();
+
+      console.log(`[JWT Auth] Post-init check #${checkCount} (${elapsed}ms):`, {
+        hasAuthenticatedUser: !!authenticatedUser,
+        authenticatedUserKeys: authenticatedUser ? Object.keys(authenticatedUser) : [],
         hasInitError: !!window.__FRONTEND_PLATFORM_INIT_ERROR__,
-        hasNetworkErrors: !!(window.__LAST_FETCH_ERROR__ || window.__LAST_XHR_ERROR__),
+        hasLoginRefreshResponse: !!window.__LOGIN_REFRESH_RESPONSE__,
+        loginRefreshStatus: window.__LOGIN_REFRESH_RESPONSE__?.status,
+        timestamp: new Date().toISOString(),
+      });
+
+      // If we have authenticated user, initialization likely succeeded
+      if (authenticatedUser && checkCount > 2) {
+        clearInterval(checkInterval);
+        console.log('[JWT Auth] Authentication state confirmed, stopping periodic checks');
+      }
+    } catch (error) {
+      // If getAuthenticatedUser throws, log it but continue checking
+      console.error(`[JWT Auth] Post-init check #${checkCount} - Error accessing auth state:`, {
+        error: error.message,
+        errorStack: error.stack,
+        elapsed,
         timestamp: new Date().toISOString(),
       });
     }
-  }, 5000);
+
+    // Stop checking after maxChecks or if APP_READY fired
+    if (checkCount >= maxChecks || window.__APP_READY_FIRED__) {
+      clearInterval(checkInterval);
+      if (!window.__APP_READY_FIRED__) {
+        console.warn('[JWT Auth] APP_READY not fired after periodic checks - final status:', {
+          checkCount,
+          elapsed,
+          hasInitError: !!window.__FRONTEND_PLATFORM_INIT_ERROR__,
+          hasNetworkErrors: !!(window.__LAST_FETCH_ERROR__ || window.__LAST_XHR_ERROR__),
+          hasLoginRefreshResponse: !!window.__LOGIN_REFRESH_RESPONSE__,
+          loginRefreshResponse: window.__LOGIN_REFRESH_RESPONSE__,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+  }, 500); // Check every 500ms
 
 } catch (initError) {
   // Catch any synchronous errors during initialize()
