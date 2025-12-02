@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
+import axios from 'axios';
 import { getConfig } from '@edx/frontend-platform';
 import { camelCaseObject } from '@edx/frontend-platform';
+import { getGlobalAuthState } from '../../utils/setupAuthInterceptor';
 
 /**
  * Minimal ProgressTab component that fetches data using JWT token
@@ -41,15 +42,29 @@ const ProgressTabMinimal = () => {
 
         const lmsBaseUrl = getConfig().LMS_BASE_URL || 'https://learn.iblai.org';
         const url = `${lmsBaseUrl}/api/course_home/progress/${courseId}`;
-
+        
         console.log('[JWT Auth] ProgressTabMinimal - API URL:', url);
-
-        const client = getAuthenticatedHttpClient();
-        if (!client) {
-          throw new Error('getAuthenticatedHttpClient() returned null/undefined');
+        
+        // Get JWT token from global auth state (bypass frontend-platform auth client)
+        const authState = getGlobalAuthState();
+        const jwtToken = authState.jwtToken || process.env.JWT_TEST_TOKEN || window.__JWT_TOKEN__;
+        
+        if (!jwtToken) {
+          throw new Error('JWT token not available. Auth state:', authState);
         }
-
-        const response = await client.get(url);
+        
+        console.log('[JWT Auth] ProgressTabMinimal - Using JWT token (length:', jwtToken.length, ')');
+        
+        // Use plain axios with JWT token in Authorization header
+        // This bypasses getAuthenticatedHttpClient() which expects cookie-based auth
+        const response = await axios.get(url, {
+          headers: {
+            'Authorization': `JWT ${jwtToken}`,
+            'Content-Type': 'application/json',
+          },
+          withCredentials: false, // Don't send cookies in JWT mode
+        });
+        
         console.log('[JWT Auth] ProgressTabMinimal - API response:', response);
 
         const data = response.data;
