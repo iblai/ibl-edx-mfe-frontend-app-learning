@@ -421,7 +421,23 @@ subscribe(APP_INIT_ERROR, (error) => {
     console.error('[JWT Auth] APP_INIT_ERROR - window.__INIT_ERROR__:', window.__INIT_ERROR__);
     console.error('[JWT Auth] APP_INIT_ERROR - document.referrer:', document.referrer);
     console.error('[JWT Auth] APP_INIT_ERROR - window.location.origin:', window.location.origin);
-    console.error('[JWT Auth] APP_INIT_ERROR - parent origin:', window.parent !== window ? (window.parent.location?.origin || 'cross-origin') : 'same-origin');
+    // Safely get parent origin - accessing window.parent.location throws SecurityError in cross-origin iframes
+    let parentOrigin = 'unknown';
+    try {
+      if (window.parent !== window) {
+        try {
+          parentOrigin = window.parent.location.origin;
+        } catch (e) {
+          // SecurityError: Cannot access parent.location in cross-origin iframe
+          parentOrigin = 'cross-origin (blocked by browser security)';
+        }
+      } else {
+        parentOrigin = 'same-origin';
+      }
+    } catch (e) {
+      parentOrigin = `error: ${e.message}`;
+    }
+    console.error('[JWT Auth] APP_INIT_ERROR - parent origin:', parentOrigin);
 
     // Check if there's an error stored globally
     if (window.__FRONTEND_PLATFORM_ERROR__) {
