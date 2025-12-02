@@ -6,6 +6,7 @@ import { camelCaseObject } from '@edx/frontend-platform';
 import { getGlobalAuthState } from '../../utils/setupAuthInterceptor';
 import { addModel } from '../../generic/model-store';
 import { fetchTabSuccess } from '../../course-home/data/slice';
+import ProgressTab from './ProgressTab';
 
 /**
  * Minimal ProgressTab component that fetches data using JWT token
@@ -136,105 +137,10 @@ const ProgressTabMinimal = () => {
     );
   }
 
-  // Render simplified progress data
-  const { completionSummary, currentGrade, sectionScores } = progressData;
-  const percent = currentGrade?.percent || 0;
-  const gradeDisplay = (percent * 100).toFixed(1);
-
-  return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <h2 style={{ marginBottom: '20px' }}>Course Progress</h2>
-
-      {/* Course Grade */}
-      {currentGrade && (
-        <div style={{
-          padding: '20px',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          border: '1px solid #dee2e6'
-        }}>
-          <h3 style={{ marginTop: 0 }}>Current Grade</h3>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#28a745' }}>
-            {gradeDisplay}%
-          </div>
-        </div>
-      )}
-
-      {/* Completion Summary */}
-      {completionSummary && (
-        <div style={{
-          padding: '20px',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          border: '1px solid #dee2e6'
-        }}>
-          <h3 style={{ marginTop: 0 }}>Completion Summary</h3>
-          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-            {completionSummary.completeCount !== undefined && (
-              <div>
-                <strong>Completed:</strong> {completionSummary.completeCount}
-              </div>
-            )}
-            {completionSummary.incompleteCount !== undefined && (
-              <div>
-                <strong>Incomplete:</strong> {completionSummary.incompleteCount}
-              </div>
-            )}
-            {completionSummary.lockedCount !== undefined && (
-              <div>
-                <strong>Locked:</strong> {completionSummary.lockedCount}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Section Scores */}
-      {sectionScores && sectionScores.length > 0 && (
-        <div style={{
-          padding: '20px',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '8px',
-          border: '1px solid #dee2e6'
-        }}>
-          <h3 style={{ marginTop: 0 }}>Section Scores</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {sectionScores.map((section, index) => (
-              <div key={index} style={{
-                padding: '10px',
-                backgroundColor: 'white',
-                borderRadius: '4px',
-                border: '1px solid #dee2e6'
-              }}>
-                <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                  {section.displayName || `Section ${index + 1}`}
-                </div>
-                {section.percent !== undefined && (
-                  <div style={{ color: '#666' }}>
-                    Grade: {(section.percent * 100).toFixed(1)}%
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Debug info */}
-      <div style={{
-        marginTop: '20px',
-        padding: '10px',
-        backgroundColor: '#e9ecef',
-        borderRadius: '4px',
-        fontSize: '12px',
-        color: '#666'
-      }}>
-        <strong>Debug:</strong> Course ID: {courseId} | Data loaded: {progressData ? 'Yes' : 'No'}
-      </div>
-    </div>
-  );
+  // PHASE 2, STEP 4: Render original ProgressTab component
+  // Data is now in Redux store, so ProgressTab can use useModel() to read it
+  console.log('[JWT Auth] ProgressTabMinimal - Rendering original ProgressTab component');
+  return <ProgressTab />;
 };
 
 export default ProgressTabMinimal;
