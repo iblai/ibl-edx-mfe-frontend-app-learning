@@ -460,26 +460,46 @@ subscribe(APP_INIT_ERROR, (error) => {
     }
     console.error('[JWT Auth] APP_INIT_ERROR - parent origin:', parentOrigin);
 
-    // Check if the only error is a SecurityError from accessing parent.location
-    // This is expected in cross-origin iframes and shouldn't block rendering
-    // In JWT iframe mode, if we have a token and the only issue is the SecurityError, continue
-    if (hasSecurityError && isJWTIframeMode) {
+    // Check if we're in JWT iframe mode and have a token
+    // If so, allow app to continue even with initialization errors
+    // SecurityError and ReferenceError can occur during initialization but shouldn't block rendering
+    if (isJWTIframeMode) {
       // Check if we have a JWT token (which means auth is working)
       // Use safe helper to avoid ReferenceError if module isn't initialized yet
       const globalAuthState = getGlobalAuthStateSafely();
-
-      if (globalAuthState.mode === 'jwt' && globalAuthState.jwtToken) {
-        console.warn('[JWT Auth] APP_INIT_ERROR - Only SecurityError detected (expected in cross-origin iframe). JWT token available. Attempting to continue...');
-        // Don't render error page - let the app continue
-        // The APP_READY handler will render the app
-        return;
-      }
+      const hasJwtToken = globalAuthState.mode === 'jwt' && globalAuthState.jwtToken;
 
       // Fallback: check if we have test token or window token
       const testToken = process.env.JWT_TEST_TOKEN || window.__JWT_TOKEN__;
-      if (testToken) {
-        console.warn('[JWT Auth] APP_INIT_ERROR - Only SecurityError detected. JWT token available (fallback check). Attempting to continue...');
-        return;
+      const hasToken = hasJwtToken || !!testToken;
+
+      if (hasToken) {
+        // Check what type of error we have
+        const lastError = window.__LAST_ERROR__?.error;
+        const errorName = lastError?.name;
+        const errorMessage = lastError?.message || '';
+
+        // Allow app to continue if:
+        // 1. Only SecurityError (expected in cross-origin iframe)
+        // 2. ReferenceError during initialization (module loading issue, but we have JWT token)
+        // 3. No actual error object (just the event name string)
+        const isExpectedError = hasSecurityError ||
+                               errorName === 'ReferenceError' ||
+                               errorName === 'SecurityError' ||
+                               (!lastError && isEventNameString);
+
+        if (isExpectedError) {
+          console.warn('[JWT Auth] APP_INIT_ERROR - Expected error in JWT iframe mode. JWT token available. Attempting to continue...', {
+            errorName,
+            hasSecurityError,
+            hasJwtToken,
+            hasTestToken: !!testToken,
+            isEventNameString,
+          });
+          // Don't render error page - let the app continue
+          // The APP_READY handler will render the app
+          return;
+        }
       }
     }
 
