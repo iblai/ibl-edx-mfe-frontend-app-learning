@@ -31,15 +31,48 @@ class ComponentErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error(`[JWT Auth] ComponentErrorBoundary caught error in ${this.props.componentName}:`, error, errorInfo);
+    const errorMessage = error?.message || String(error);
+    const isSendTrackEventError = errorMessage.includes('sendTrackEvent');
+
+    console.error(`[JWT Auth] ComponentErrorBoundary caught error in ${this.props.componentName}:`, {
+      error,
+      errorMessage,
+      isSendTrackEventError,
+      errorInfo,
+      stack: error?.stack,
+      note: isSendTrackEventError
+        ? 'This is an analytics error - webpack rebuild needed for permanent fix'
+        : 'Unknown error',
+    });
+
+    // If it's a sendTrackEvent error, try to patch analytics one more time
+    if (isSendTrackEventError && typeof window !== 'undefined') {
+      try {
+        const analyticsModule = require('@edx/frontend-platform/analytics');
+        if (analyticsModule && (!analyticsModule.sendTrackEvent || typeof analyticsModule.sendTrackEvent !== 'function')) {
+          analyticsModule.sendTrackEvent = function() { return Promise.resolve(); };
+          console.log(`[JWT Auth] Emergency patch: Patched sendTrackEvent for ${this.props.componentName}`);
+        }
+      } catch (e) {
+        // Ignore
+      }
+    }
   }
 
   render() {
     if (this.state.hasError) {
+      const errorMessage = this.state.error?.message || 'Unknown error';
+      const isSendTrackEventError = errorMessage.includes('sendTrackEvent');
+
       return (
-        <div style={{ padding: '10px', backgroundColor: '#fff3cd', borderRadius: '4px', margin: '10px 0' }}>
-          <small style={{ color: '#856404' }}>
-            {this.props.componentName} failed to render: {this.state.error?.message || 'Unknown error'}
+        <div style={{ padding: '10px', backgroundColor: isSendTrackEventError ? '#f8d7da' : '#fff3cd', borderRadius: '4px', margin: '10px 0' }}>
+          <small style={{ color: isSendTrackEventError ? '#721c24' : '#856404' }}>
+            <strong>{this.props.componentName}</strong> failed to render: {errorMessage}
+            {isSendTrackEventError && (
+              <div style={{ marginTop: '5px', fontSize: '11px' }}>
+                ⚠️ Analytics error - webpack rebuild required for permanent fix
+              </div>
+            )}
           </small>
         </div>
       );
