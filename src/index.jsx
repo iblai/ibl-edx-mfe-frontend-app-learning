@@ -23,6 +23,7 @@ import CoursewareRedirectLandingPage from './courseware/CoursewareRedirectLandin
 import DatesTab from './course-home/dates-tab';
 import GoalUnsubscribe from './course-home/goal-unsubscribe';
 import ProgressTab from './course-home/progress-tab/ProgressTab';
+import ProgressTabMinimal from './course-home/progress-tab/ProgressTabMinimal';
 import { TabContainer } from './tab-page';
 
 import { fetchDatesTab, fetchOutlineTab, fetchProgressTab } from './course-home/data';
@@ -271,9 +272,20 @@ function renderReactApp() {
 
   // MINIMAL RENDER MODE: Just render ProgressTab directly, no providers, no routing
   if (MINIMAL_RENDER_MODE) {
-    console.log('[JWT Auth] Using MINIMAL_RENDER_MODE - rendering static ProgressTab only');
+    console.log('[JWT Auth] Using MINIMAL_RENDER_MODE - rendering ProgressTabMinimal with JWT data fetching');
     console.log('[JWT Auth] Root element:', rootElement);
-    console.log('[JWT Auth] ProgressTab component:', ProgressTab);
+
+    // Ensure auth interceptor is set up for JWT token support
+    if (!interceptorCleanup) {
+      try {
+        console.log('[JWT Auth] Setting up auth interceptor for minimal mode');
+        interceptorCleanup = setupAuthInterceptor();
+        console.log('[JWT Auth] Auth interceptor set up successfully');
+      } catch (interceptorError) {
+        console.error('[JWT Auth] Failed to setup auth interceptor in minimal mode:', interceptorError);
+        // Continue anyway - ProgressTabMinimal will handle errors
+      }
+    }
 
     try {
       reactRoot = createRoot(rootElement);
@@ -281,12 +293,12 @@ function renderReactApp() {
       reactRoot.render(
         <SimpleErrorBoundary>
           <div style={{ minHeight: '100vh', padding: '20px', backgroundColor: '#f5f5f5' }}>
-            <ProgressTab />
+            <ProgressTabMinimal />
           </div>
         </SimpleErrorBoundary>
       );
 
-      console.log('[JWT Auth] React app rendered successfully (minimal mode)');
+      console.log('[JWT Auth] React app rendered successfully (minimal mode with data fetching)');
       logInitializationMilestone('React app rendered (minimal mode)');
     } catch (renderError) {
       console.error('[JWT Auth] Error rendering React app (minimal mode):', renderError);
