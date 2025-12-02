@@ -188,73 +188,25 @@ try {
 // This allows API functions to use getAuthenticatedHttpClient() without modification
 let interceptorCleanup = null;
 
-subscribe(APP_READY, () => {
-  window.__APP_READY_FIRED__ = true;
-  logInitializationMilestone('APP_READY event fired');
-
-  // Initialize global auth interceptor
-  // This sets up interceptors on getAuthenticatedHttpClient() to handle JWT tokens
-  // Use setTimeout to ensure frontend-platform is fully initialized
-  if (!interceptorCleanup) {
-    try {
-      // Get config to check for test token
-      const config = getConfig();
-      const testToken = config?.JWT_TEST_TOKEN || process.env.JWT_TEST_TOKEN;
-      const isInIframe = window.self !== window.top;
-      const jwtAuthEnabled = config?.JWT_AUTH_ENABLED === 'true' || !!testToken;
-
-      // Check current global auth state (safely)
-      const currentAuthState = getGlobalAuthStateSafely();
-
-      console.log('[JWT Auth] Initializing global auth interceptor on APP_READY', {
-        jwtAuthEnabled,
-        isInIframe,
-        hasTestToken: !!testToken,
-        testTokenLength: testToken ? testToken.length : 0,
-        testTokenPreview: testToken ? testToken.substring(0, 30) + '...' : null,
-        originWhitelist: config?.JWT_AUTH_ORIGIN_WHITELIST,
-        currentAuthState: {
-          mode: currentAuthState.mode,
-          hasToken: !!currentAuthState.jwtToken,
-          tokenLength: currentAuthState.jwtToken ? currentAuthState.jwtToken.length : 0,
-        },
-      });
-      logInfo('[JWT Auth] Initializing global auth interceptor on APP_READY', {
-        jwtAuthEnabled,
-        isInIframe,
-        hasTestToken: !!testToken,
-        testTokenLength: testToken ? testToken.length : 0,
-        originWhitelist: config?.JWT_AUTH_ORIGIN_WHITELIST,
-        currentAuthState: {
-          mode: currentAuthState.mode,
-          hasToken: !!currentAuthState.jwtToken,
-        },
-      });
-
-      // If in JWT iframe mode and we have a token, ensure global state is set
-      if (isInIframe && jwtAuthEnabled) {
-        if (testToken) {
-          console.log('[JWT Auth] Setting global auth state to JWT mode with test token on APP_READY');
-          setGlobalAuthState('jwt', testToken);
-        } else if (window.__JWT_TOKEN__) {
-          console.log('[JWT Auth] Setting global auth state to JWT mode with window token on APP_READY');
-          setGlobalAuthState('jwt', window.__JWT_TOKEN__);
-        } else if (currentAuthState.mode !== 'jwt') {
-          console.log('[JWT Auth] JWT iframe mode but no token yet - will be set by AuthenticatedHttpClientProvider when token arrives');
-        }
-      }
-
-      interceptorCleanup = setupAuthInterceptor();
-    } catch (error) {
-      // If interceptor setup fails, log but don't block app initialization
-      console.error('[JWT Auth] Failed to setup auth interceptor:', error);
-    }
+// Shared function to render React app - called from both APP_READY and APP_INIT_ERROR (when allowing continue)
+let reactRoot = null;
+function renderReactApp() {
+  // Prevent double rendering
+  if (reactRoot) {
+    console.warn('[JWT Auth] React app already rendered, skipping duplicate render');
+    return;
   }
+
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    console.error('[JWT Auth] Cannot render React app - root element not found');
+    return;
+  }
+
   logInitializationMilestone('About to render React app');
+  reactRoot = createRoot(rootElement);
 
-  const root = createRoot(document.getElementById('root'));
-
-  root.render(
+  reactRoot.render(
     <StrictMode>
       <ErrorBoundary>
         <AppProvider store={store}>
@@ -376,6 +328,74 @@ subscribe(APP_READY, () => {
   );
 
   logInitializationMilestone('React app rendered');
+}
+
+// APP_READY handler - renders React app when frontend-platform is ready
+subscribe(APP_READY, () => {
+  window.__APP_READY_FIRED__ = true;
+  logInitializationMilestone('APP_READY event fired');
+
+  // Initialize global auth interceptor
+  // This sets up interceptors on getAuthenticatedHttpClient() to handle JWT tokens
+  // Use setTimeout to ensure frontend-platform is fully initialized
+  if (!interceptorCleanup) {
+    try {
+      // Get config to check for test token
+      const config = getConfig();
+      const testToken = config?.JWT_TEST_TOKEN || process.env.JWT_TEST_TOKEN;
+      const isInIframe = window.self !== window.top;
+      const jwtAuthEnabled = config?.JWT_AUTH_ENABLED === 'true' || !!testToken;
+
+      // Check current global auth state (safely)
+      const currentAuthState = getGlobalAuthStateSafely();
+
+      console.log('[JWT Auth] Initializing global auth interceptor on APP_READY', {
+        jwtAuthEnabled,
+        isInIframe,
+        hasTestToken: !!testToken,
+        testTokenLength: testToken ? testToken.length : 0,
+        testTokenPreview: testToken ? testToken.substring(0, 30) + '...' : null,
+        originWhitelist: config?.JWT_AUTH_ORIGIN_WHITELIST,
+        currentAuthState: {
+          mode: currentAuthState.mode,
+          hasToken: !!currentAuthState.jwtToken,
+          tokenLength: currentAuthState.jwtToken ? currentAuthState.jwtToken.length : 0,
+        },
+      });
+      logInfo('[JWT Auth] Initializing global auth interceptor on APP_READY', {
+        jwtAuthEnabled,
+        isInIframe,
+        hasTestToken: !!testToken,
+        testTokenLength: testToken ? testToken.length : 0,
+        originWhitelist: config?.JWT_AUTH_ORIGIN_WHITELIST,
+        currentAuthState: {
+          mode: currentAuthState.mode,
+          hasToken: !!currentAuthState.jwtToken,
+        },
+      });
+
+      // If in JWT iframe mode and we have a token, ensure global state is set
+      if (isInIframe && jwtAuthEnabled) {
+        if (testToken) {
+          console.log('[JWT Auth] Setting global auth state to JWT mode with test token on APP_READY');
+          setGlobalAuthState('jwt', testToken);
+        } else if (window.__JWT_TOKEN__) {
+          console.log('[JWT Auth] Setting global auth state to JWT mode with window token on APP_READY');
+          setGlobalAuthState('jwt', window.__JWT_TOKEN__);
+        } else if (currentAuthState.mode !== 'jwt') {
+          console.log('[JWT Auth] JWT iframe mode but no token yet - will be set by AuthenticatedHttpClientProvider when token arrives');
+        }
+      }
+
+      interceptorCleanup = setupAuthInterceptor();
+    } catch (error) {
+      // If interceptor setup fails, log but don't block app initialization
+      console.error('[JWT Auth] Failed to setup auth interceptor:', error);
+    }
+  }
+
+  // Render React app
+  renderReactApp();
 });
 
 subscribe(APP_INIT_ERROR, (error) => {
@@ -443,7 +463,14 @@ subscribe(APP_INIT_ERROR, (error) => {
         lastErrorName: lastError?.name,
         lastErrorMessage: lastError?.message,
       });
-      // Don't render error page - let APP_READY handler render the app
+      // Don't render error page - force render React app now
+      // APP_READY might not fire after APP_INIT_ERROR, so we render directly
+      setTimeout(() => {
+        if (!window.__APP_READY_FIRED__) {
+          console.warn('[JWT Auth] APP_READY did not fire after APP_INIT_ERROR - forcing React render');
+          renderReactApp();
+        }
+      }, 100);
       return;
     }
   }
