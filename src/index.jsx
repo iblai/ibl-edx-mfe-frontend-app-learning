@@ -423,13 +423,19 @@ subscribe(APP_INIT_ERROR, (error) => {
     console.error('[JWT Auth] APP_INIT_ERROR - window.location.origin:', window.location.origin);
     // Safely get parent origin - accessing window.parent.location throws SecurityError in cross-origin iframes
     let parentOrigin = 'unknown';
+    let hasSecurityError = false;
     try {
       if (window.parent !== window) {
         try {
           parentOrigin = window.parent.location.origin;
         } catch (e) {
           // SecurityError: Cannot access parent.location in cross-origin iframe
+          // This is expected in cross-origin iframes and not a real error
           parentOrigin = 'cross-origin (blocked by browser security)';
+          if (e.name === 'SecurityError') {
+            hasSecurityError = true;
+            console.warn('[JWT Auth] APP_INIT_ERROR - SecurityError accessing parent.location (expected in cross-origin iframe)');
+          }
         }
       } else {
         parentOrigin = 'same-origin';
@@ -438,6 +444,16 @@ subscribe(APP_INIT_ERROR, (error) => {
       parentOrigin = `error: ${e.message}`;
     }
     console.error('[JWT Auth] APP_INIT_ERROR - parent origin:', parentOrigin);
+
+    // Check if the only error is a SecurityError from accessing parent.location
+    // This is expected in cross-origin iframes and shouldn't block rendering
+    if (hasSecurityError && window.__LAST_ERROR__?.error?.name === 'SecurityError' &&
+        window.__LAST_ERROR__?.error?.message?.includes('cross-origin frame')) {
+      console.warn('[JWT Auth] APP_INIT_ERROR - Only SecurityError detected (expected in cross-origin iframe). Attempting to continue...');
+      // Don't render error page - let the app continue
+      // The APP_READY handler will render the app
+      return;
+    }
 
     // Check if there's an error stored globally
     if (window.__FRONTEND_PLATFORM_ERROR__) {
