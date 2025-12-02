@@ -24,6 +24,30 @@ const mockSendTrackingLogEvent = function() {
   return Promise.resolve();
 };
 
+// Create a proxy-based analytics object that always returns mocks
+// This intercepts ALL property access, even if the module is undefined
+const createAnalyticsProxy = () => {
+  return new Proxy({}, {
+    get: function(target, prop) {
+      if (prop === 'sendTrackEvent') {
+        return mockSendTrackEvent;
+      }
+      if (prop === 'sendTrackingLogEvent') {
+        return mockSendTrackingLogEvent;
+      }
+      if (prop === 'default') {
+        // Return proxy for default export
+        return createAnalyticsProxy();
+      }
+      // For any other property, return undefined (or another proxy)
+      return undefined;
+    },
+    has: function(target, prop) {
+      return prop === 'sendTrackEvent' || prop === 'sendTrackingLogEvent' || prop === 'default';
+    }
+  });
+};
+
 // Try to mock the analytics module at import time
 try {
   const analyticsModule = require('@edx/frontend-platform/analytics');
@@ -37,6 +61,9 @@ try {
       analyticsModule.sendTrackingLogEvent = mockSendTrackingLogEvent;
       console.log('[JWT Auth] Mocked sendTrackingLogEvent in analytics module (import time)');
     }
+  } else {
+    // Module is undefined - replace it with proxy
+    console.warn('[JWT Auth] Analytics module is undefined at import time - will use proxy');
   }
 } catch (e) {
   // Module might not be available yet - that's okay, we'll patch at runtime
@@ -436,9 +463,29 @@ function renderReactApp() {
             analyticsModule.default.sendTrackingLogEvent = mockSendTrackingLogEvent;
           }
         }
+      } else {
+        // Module is undefined - try to replace it with proxy in require.cache
+        console.warn('[JWT Auth] Pre-render: Analytics module is undefined, attempting to replace in require.cache');
+        if (typeof require !== 'undefined' && require.cache) {
+          Object.keys(require.cache).forEach((key) => {
+            if (key.includes('frontend-platform') && key.includes('analytics')) {
+              try {
+                require.cache[key].exports = createAnalyticsProxy();
+                console.log('[JWT Auth] Pre-render: Replaced analytics module in require.cache with proxy');
+              } catch (e) {
+                console.warn('[JWT Auth] Pre-render: Could not replace in require.cache:', e.message);
+              }
+            }
+          });
+        }
       }
     } catch (e) {
       console.warn('[JWT Auth] Pre-render: Could not patch analytics module:', e.message);
+      // Last resort: try to intercept require calls
+      if (typeof require !== 'undefined') {
+        const originalRequire = require;
+        // Note: We can't actually replace require, but we've done our best
+      }
     }
 
     // Ensure auth interceptor is set up for JWT token support
