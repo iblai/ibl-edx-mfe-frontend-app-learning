@@ -147,6 +147,22 @@ function getAuthenticatedUserSafelySync() {
   }
 }
 
+// Safe helper to get global auth state without causing ReferenceError
+// Wraps require() in try-catch to handle module initialization issues
+function getGlobalAuthStateSafely() {
+  try {
+    const { getGlobalAuthState } = require('./utils/setupAuthInterceptor');
+    return getGlobalAuthState();
+  } catch (error) {
+    // Module not initialized yet or circular dependency issue
+    // Return default state
+    return {
+      mode: 'cookie',
+      jwtToken: null,
+    };
+  }
+}
+
 // Set up global error handlers IMMEDIATELY - before anything else runs
 // This catches errors that occur before React mounts
 try {
@@ -187,9 +203,8 @@ subscribe(APP_READY, () => {
       const isInIframe = window.self !== window.top;
       const jwtAuthEnabled = config?.JWT_AUTH_ENABLED === 'true' || !!testToken;
 
-      // Check current global auth state
-      const { getGlobalAuthState } = require('./utils/setupAuthInterceptor');
-      const currentAuthState = getGlobalAuthState();
+      // Check current global auth state (safely)
+      const currentAuthState = getGlobalAuthStateSafely();
 
       console.log('[JWT Auth] Initializing global auth interceptor on APP_READY', {
         jwtAuthEnabled,
@@ -450,13 +465,20 @@ subscribe(APP_INIT_ERROR, (error) => {
     // In JWT iframe mode, if we have a token and the only issue is the SecurityError, continue
     if (hasSecurityError && isJWTIframeMode) {
       // Check if we have a JWT token (which means auth is working)
-      const { getGlobalAuthState } = require('./utils/setupAuthInterceptor');
-      const globalAuthState = getGlobalAuthState();
+      // Use safe helper to avoid ReferenceError if module isn't initialized yet
+      const globalAuthState = getGlobalAuthStateSafely();
 
       if (globalAuthState.mode === 'jwt' && globalAuthState.jwtToken) {
         console.warn('[JWT Auth] APP_INIT_ERROR - Only SecurityError detected (expected in cross-origin iframe). JWT token available. Attempting to continue...');
         // Don't render error page - let the app continue
         // The APP_READY handler will render the app
+        return;
+      }
+
+      // Fallback: check if we have test token or window token
+      const testToken = process.env.JWT_TEST_TOKEN || window.__JWT_TOKEN__;
+      if (testToken) {
+        console.warn('[JWT Auth] APP_INIT_ERROR - Only SecurityError detected. JWT token available (fallback check). Attempting to continue...');
         return;
       }
     }
@@ -792,9 +814,8 @@ try {
     // In JWT iframe mode, we don't need to check getAuthenticatedUser()
     // We use JWT tokens instead of cookie-based auth
     if (isJWTIframeMode) {
-      // Check global auth state for JWT token instead
-      const { getGlobalAuthState } = require('./utils/setupAuthInterceptor');
-      const globalAuthState = getGlobalAuthState();
+      // Check global auth state for JWT token instead (safely)
+      const globalAuthState = getGlobalAuthStateSafely();
 
       console.log(`[JWT Auth] Post-init check #${checkCount} (${elapsed}ms) - JWT iframe mode:`, {
         authMode: globalAuthState.mode,
