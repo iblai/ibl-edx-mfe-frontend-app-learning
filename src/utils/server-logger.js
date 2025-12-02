@@ -12,37 +12,42 @@
  * @param {Object} data - Event data to log
  */
 export function logToServer(event, data = {}) {
-  try {
-    // Create a minimal log endpoint request
-    // Using a GET request with query params so it shows in access logs
-    const params = new URLSearchParams({
-      event,
-      timestamp: Date.now().toString(),
-      ...Object.fromEntries(
-        Object.entries(data).map(([key, value]) => [
-          key,
-          typeof value === 'object' ? JSON.stringify(value) : String(value)
-        ])
-      ),
-    });
+  // DEBUGGING: Disable all server logging calls - just show static page
+  // TODO: Re-enable when iframe works
+  return;
 
-    // Use a beacon or fetch to send log (non-blocking)
-    // This will appear in server access logs
-    const logUrl = `/learning/api/jwt-auth-log?${params.toString()}`;
+  // Original code commented out for debugging
+  // try {
+  //   // Create a minimal log endpoint request
+  //   // Using a GET request with query params so it shows in access logs
+  //   const params = new URLSearchParams({
+  //     event,
+  //     timestamp: Date.now().toString(),
+  //     ...Object.fromEntries(
+  //       Object.entries(data).map(([key, value]) => [
+  //         key,
+  //         typeof value === 'object' ? JSON.stringify(value) : String(value)
+  //       ])
+  //     ),
+  //   });
 
-    // Use GET request with fetch (sendBeacon always uses POST)
-    // This will appear in Docker access logs as GET requests
-    fetch(logUrl, {
-      method: 'GET',
-      keepalive: true,
-      credentials: 'same-origin'
-    }).catch(() => {
-      // Silently fail - logging should never break the app
-    });
-  } catch (error) {
-    // Silently fail - logging should never break the app
-    // console.error('[JWT Auth] Failed to log to server', error);
-  }
+  //   // Use a beacon or fetch to send log (non-blocking)
+  //   // This will appear in server access logs
+  //   const logUrl = `/learning/api/jwt-auth-log?${params.toString()}`;
+
+  //   // Use GET request with fetch (sendBeacon always uses POST)
+  //   // This will appear in Docker access logs as GET requests
+  //   fetch(logUrl, {
+  //     method: 'GET',
+  //     keepalive: true,
+  //     credentials: 'same-origin'
+  //   }).catch(() => {
+  //     // Silently fail - logging should never break the app
+  //   });
+  // } catch (error) {
+  //   // Silently fail - logging should never break the app
+  //   // console.error('[JWT Auth] Failed to log to server', error);
+  // }
 }
 
 /**
