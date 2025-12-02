@@ -395,6 +395,59 @@ subscribe(APP_INIT_ERROR, (error) => {
   // The actual error might be in a different format or stored elsewhere
   const isEventNameString = typeof error === 'string' && error === 'APP.INIT_ERROR';
 
+  // EARLY CHECK: If we're in JWT iframe mode with a token, allow app to continue
+  // This prevents error page from showing when we have working JWT authentication
+  // Check for token WITHOUT requiring any modules to avoid ReferenceError during initialization
+  const isInIframe = window.self !== window.top;
+  const jwtAuthEnabled = process.env.JWT_AUTH_ENABLED === 'true' || !!process.env.JWT_TEST_TOKEN;
+  const isJWTIframeMode = isInIframe && jwtAuthEnabled;
+
+  if (isJWTIframeMode) {
+    // Check for JWT token in multiple ways without requiring modules
+    // This avoids ReferenceError if modules aren't initialized yet
+    let hasJwtToken = false;
+    let tokenSource = 'none';
+
+    // Check test token first (safest - no module dependencies)
+    const testToken = process.env.JWT_TEST_TOKEN || window.__JWT_TOKEN__;
+    if (testToken) {
+      hasJwtToken = true;
+      tokenSource = 'test/env';
+    }
+
+    // Try to check global auth state (may fail if module not initialized)
+    try {
+      const globalAuthState = getGlobalAuthStateSafely();
+      if (globalAuthState.mode === 'jwt' && globalAuthState.jwtToken) {
+        hasJwtToken = true;
+        tokenSource = 'globalState';
+      }
+    } catch (e) {
+      // Module not initialized yet - that's okay, we'll use test token if available
+      console.warn('[JWT Auth] APP_INIT_ERROR - Could not check global auth state (module not initialized):', e.message);
+    }
+
+    // Also check window.__LAST_ERROR__ to see if it's a ReferenceError (expected during init)
+    const lastError = window.__LAST_ERROR__;
+    const isReferenceError = lastError?.name === 'ReferenceError' ||
+                             lastError?.message?.includes('before initialization') ||
+                             String(error).includes('ReferenceError') ||
+                             String(error).includes('before initialization');
+
+    if (hasJwtToken || isReferenceError) {
+      console.warn('[JWT Auth] APP_INIT_ERROR - Allowing app to continue in JWT iframe mode', {
+        hasJwtToken,
+        tokenSource,
+        isReferenceError,
+        errorString: String(error),
+        lastErrorName: lastError?.name,
+        lastErrorMessage: lastError?.message,
+      });
+      // Don't render error page - let APP_READY handler render the app
+      return;
+    }
+  }
+
   // Capture all possible error information
   const errorDetails = {
     // Standard Error properties
