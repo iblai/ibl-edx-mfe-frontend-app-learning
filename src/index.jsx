@@ -9,6 +9,32 @@ import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Routes, Route } from 'react-router-dom';
 
+// PHASE 3, STEP 6: Mock analytics module at import level
+// This ensures sendTrackEvent is available when components import it
+// Components import: import { sendTrackEvent } from '@edx/frontend-platform/analytics'
+try {
+  // Try to mock the analytics module if it's not initialized
+  const analyticsModule = require('@edx/frontend-platform/analytics');
+  if (analyticsModule) {
+    // If module exists but sendTrackEvent is undefined, add mock
+    if (!analyticsModule.sendTrackEvent || typeof analyticsModule.sendTrackEvent !== 'function') {
+      analyticsModule.sendTrackEvent = function() {
+        // Silent no-op to avoid console spam
+      };
+      console.log('[JWT Auth] Mocked sendTrackEvent in analytics module');
+    }
+    if (!analyticsModule.sendTrackingLogEvent || typeof analyticsModule.sendTrackingLogEvent !== 'function') {
+      analyticsModule.sendTrackingLogEvent = function() {
+        // Silent no-op
+      };
+      console.log('[JWT Auth] Mocked sendTrackingLogEvent in analytics module');
+    }
+  }
+} catch (e) {
+  // Module might not be available yet - that's okay, we'll try again later
+  console.warn('[JWT Auth] Could not mock analytics module at import time:', e.message);
+}
+
 import { Helmet } from 'react-helmet';
 import { fetchDiscussionTab, fetchLiveTab } from './course-home/data/thunks';
 import DiscussionTab from './course-home/discussion-tab/DiscussionTab';
@@ -203,6 +229,10 @@ if (MINIMAL_RENDER_MODE) {
     window.sendTrackEvent = window.sendTrackEvent || function() {
       console.log('[JWT Auth] Mock sendTrackEvent called (no-op)', arguments);
     };
+
+    // Analytics module is mocked in index.html before modules load
+    // This ensures sendTrackEvent is available when components import it
+    // The mock is set up in public/index.html as window.__EDX_ANALYTICS_MOCK__
 
     // Mock any logging functions that might fail
     if (!window.__EDX_LOGGING__) {

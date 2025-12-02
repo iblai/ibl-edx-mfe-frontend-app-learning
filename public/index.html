@@ -105,6 +105,28 @@
           });
         });
 
+        // PHASE 3, STEP 6: Mock analytics module BEFORE any modules load
+        // This ensures sendTrackEvent is available when components import it
+        // Components import: import { sendTrackEvent } from '@edx/frontend-platform/analytics'
+        (function() {
+          // Create a global analytics mock that will be used by the module
+          window.__EDX_ANALYTICS_MOCK__ = {
+            sendTrackEvent: function() {
+              // Silent no-op - don't log to avoid console spam
+              // console.log('[JWT Auth] Mock sendTrackEvent called (no-op)', arguments);
+            },
+            sendTrackingLogEvent: function() {
+              // Silent no-op
+            },
+          };
+
+          // Also set on window for direct access
+          window.sendTrackEvent = window.__EDX_ANALYTICS_MOCK__.sendTrackEvent;
+          window.sendTrackingLogEvent = window.__EDX_ANALYTICS_MOCK__.sendTrackingLogEvent;
+
+          console.log('[JWT Auth] Analytics mocks installed (before modules load)');
+        })();
+
         console.log('[JWT Auth] Early error handlers installed (before any scripts load)');
 
         // Initialize network request counter and request tracking
