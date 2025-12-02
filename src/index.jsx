@@ -87,19 +87,63 @@ function getAuthenticatedUserSafelySync() {
   try {
     // Try to access the module synchronously (may fail if not initialized)
     // eslint-disable-next-line import/no-unresolved
-    const authModule = require('@edx/frontend-platform/auth');
+    let authModule;
+    try {
+      authModule = require('@edx/frontend-platform/auth');
+    } catch (requireError) {
+      return {
+        error: `Failed to require auth module: ${requireError.message}`,
+        available: false,
+        errorStack: requireError.stack,
+      };
+    }
+
+    // Check if module exists
     if (!authModule) {
-      return { error: 'Auth module is undefined', available: false };
+      return { error: 'Auth module is undefined after require', available: false };
     }
 
-    if (!authModule.getAuthenticatedUser || typeof authModule.getAuthenticatedUser !== 'function') {
-      return { error: 'getAuthenticatedUser function not found', available: false };
+    // Log module structure for debugging
+    const moduleKeys = Object.keys(authModule);
+    const hasGetAuthenticatedUser = 'getAuthenticatedUser' in authModule;
+    const getAuthenticatedUserType = typeof authModule.getAuthenticatedUser;
+
+    // Check if getAuthenticatedUser exists and is a function
+    if (!hasGetAuthenticatedUser) {
+      return {
+        error: `getAuthenticatedUser not found in auth module. Available keys: ${moduleKeys.join(', ')}`,
+        available: false,
+        moduleKeys,
+      };
     }
 
-    const user = authModule.getAuthenticatedUser();
-    return { user, available: true, error: null };
+    if (getAuthenticatedUserType !== 'function') {
+      return {
+        error: `getAuthenticatedUser exists but is not a function (type: ${getAuthenticatedUserType})`,
+        available: false,
+        moduleKeys,
+        getAuthenticatedUserType,
+      };
+    }
+
+    // Now try to call it - wrap in try-catch in case it throws
+    try {
+      const user = authModule.getAuthenticatedUser();
+      return { user, available: true, error: null, moduleKeys };
+    } catch (callError) {
+      return {
+        error: `getAuthenticatedUser() threw error: ${callError.message}`,
+        available: false,
+        errorStack: callError.stack,
+        moduleKeys,
+      };
+    }
   } catch (error) {
-    return { error: error.message, available: false, errorStack: error.stack };
+    return {
+      error: `Unexpected error in getAuthenticatedUserSafelySync: ${error.message}`,
+      available: false,
+      errorStack: error.stack,
+    };
   }
 }
 
