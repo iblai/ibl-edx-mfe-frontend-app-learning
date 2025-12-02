@@ -290,16 +290,20 @@ function renderReactApp() {
     try {
       reactRoot = createRoot(rootElement);
 
+      // PHASE 1, STEP 1: Add Redux Store Provider
+      // This enables useModel() hook that ProgressTab needs
       reactRoot.render(
         <SimpleErrorBoundary>
-          <div style={{ minHeight: '100vh', padding: '20px', backgroundColor: '#f5f5f5' }}>
-            <ProgressTabMinimal />
-          </div>
+          <AppProvider store={store}>
+            <div style={{ minHeight: '100vh', padding: '20px', backgroundColor: '#f5f5f5' }}>
+              <ProgressTabMinimal />
+            </div>
+          </AppProvider>
         </SimpleErrorBoundary>
       );
 
-      console.log('[JWT Auth] React app rendered successfully (minimal mode with data fetching)');
-      logInitializationMilestone('React app rendered (minimal mode)');
+      console.log('[JWT Auth] React app rendered successfully (minimal mode with Redux store)');
+      logInitializationMilestone('React app rendered (minimal mode - Phase 1, Step 1: Redux store added)');
     } catch (renderError) {
       console.error('[JWT Auth] Error rendering React app (minimal mode):', renderError);
       // Fallback: try to render directly to DOM
