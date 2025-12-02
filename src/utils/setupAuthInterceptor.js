@@ -1,6 +1,32 @@
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
-import { logInfo, logError } from '@edx/frontend-platform/logging';
 import { logRequestDetails, logResponseDetails, logErrorResponse } from './error-logging';
+
+// Safe wrappers for frontend-platform logging that may not be initialized yet
+function safeLogInfo(message, data) {
+  try {
+    // Try to import dynamically - may fail if not initialized
+    const { logInfo } = require('@edx/frontend-platform/logging');
+    if (logInfo && typeof logInfo === 'function') {
+      logInfo(message, data);
+    }
+  } catch (e) {
+    // Logging not available yet - this is expected during early initialization
+    // console.log is already called, which is sufficient
+  }
+}
+
+function safeLogError(message, data) {
+  try {
+    // Try to import dynamically - may fail if not initialized
+    const { logError } = require('@edx/frontend-platform/logging');
+    if (logError && typeof logError === 'function') {
+      logError(message, data);
+    }
+  } catch (e) {
+    // Logging not available yet - this is expected during early initialization
+    // console.error is already called, which is sufficient
+  }
+}
 
 /**
  * Global state for JWT authentication.
@@ -37,7 +63,7 @@ export function setGlobalAuthState(mode, jwtToken) {
       newHasToken,
       tokenLength: jwtToken ? jwtToken.length : 0,
     });
-    logInfo('[JWT Auth] Global auth state updated', {
+    safeLogInfo('[JWT Auth] Global auth state updated', {
       previousMode,
       newMode: mode,
       previousHasToken,
@@ -71,12 +97,12 @@ export function setupAuthInterceptor() {
     const client = getAuthenticatedHttpClient();
 
     if (!client) {
-      logError('[JWT Auth] getAuthenticatedHttpClient returned null/undefined', {});
+      safeLogError('[JWT Auth] getAuthenticatedHttpClient returned null/undefined', {});
       return { remove: () => {} }; // Return no-op cleanup function
     }
 
     console.log('[JWT Auth] Setting up global auth interceptor');
-    logInfo('[JWT Auth] Setting up global auth interceptor', {});
+    safeLogInfo('[JWT Auth] Setting up global auth interceptor', {});
 
     // Request interceptor to add JWT token when needed
     const requestInterceptorId = client.interceptors.request.use(
@@ -116,7 +142,7 @@ export function setupAuthInterceptor() {
             headerValue: `JWT ${jwtToken.substring(0, 30)}...`,
             headerAdded: true,
           });
-          logInfo('[JWT Auth] Request interceptor - JWT mode', {
+          safeLogInfo('[JWT Auth] Request interceptor - JWT mode', {
             url,
             method: config.method,
             hasToken: !!jwtToken,
@@ -132,7 +158,7 @@ export function setupAuthInterceptor() {
 
           // Only log occasionally to avoid spam
           if (Math.random() < 0.01) { // Log 1% of requests
-            logInfo('[JWT Auth] Request interceptor - Cookie mode', {
+            safeLogInfo('[JWT Auth] Request interceptor - Cookie mode', {
               url,
               method: config.method,
               mode,
@@ -175,7 +201,7 @@ export function setupAuthInterceptor() {
               method: error?.config?.method,
               hasToken: !!jwtToken,
             });
-            logError('[JWT Auth] Authentication failed: 401 Unauthorized', {
+            safeLogError('[JWT Auth] Authentication failed: 401 Unauthorized', {
               error: error.message,
               authMode: mode,
               url: error?.config?.url,
@@ -186,7 +212,7 @@ export function setupAuthInterceptor() {
             // Request token refresh from parent window
             try {
               if (window.parent && window.parent !== window) {
-                logInfo('[JWT Auth] Requesting token refresh due to 401 error', {
+                safeLogInfo('[JWT Auth] Requesting token refresh due to 401 error', {
                   url: error?.config?.url,
                 });
                 window.parent.postMessage(
@@ -196,18 +222,18 @@ export function setupAuthInterceptor() {
                   '*' // In production, should specify target origin
                 );
               } else {
-                logError('[JWT Auth] Cannot request token refresh - not in iframe', {
+                safeLogError('[JWT Auth] Cannot request token refresh - not in iframe', {
                   url: error?.config?.url,
                 });
               }
             } catch (err) {
-              logError('[JWT Auth] Failed to request token refresh on 401 error', {
+              safeLogError('[JWT Auth] Failed to request token refresh on 401 error', {
                 error: err.message,
                 url: error?.config?.url,
               });
             }
           } else {
-            logInfo('[JWT Auth] 401 error (not JWT mode)', {
+            safeLogInfo('[JWT Auth] 401 error (not JWT mode)', {
               mode,
               hasJwtToken: !!jwtToken,
               url: error?.config?.url,
@@ -216,21 +242,21 @@ export function setupAuthInterceptor() {
         } else if (status === 403) {
           // Forbidden - insufficient permissions
           if (mode === 'jwt') {
-            logError('[JWT Auth] Authentication failed: 403 Forbidden', {
+            safeLogError('[JWT Auth] Authentication failed: 403 Forbidden', {
               error: error.message,
               authMode: mode,
               url: error?.config?.url,
               method: error?.config?.method,
             });
           } else {
-            logInfo('[JWT Auth] 403 error (not JWT mode)', {
+            safeLogInfo('[JWT Auth] 403 error (not JWT mode)', {
               mode,
               url: error?.config?.url,
             });
           }
         } else {
           // Other errors
-          logInfo('[JWT Auth] Response error', {
+          safeLogInfo('[JWT Auth] Response error', {
             status,
             mode,
             url: error?.config?.url,
@@ -246,13 +272,13 @@ export function setupAuthInterceptor() {
     // Return cleanup function
     return {
       remove: () => {
-        logInfo('[JWT Auth] Removing auth interceptors', {});
+        safeLogInfo('[JWT Auth] Removing auth interceptors', {});
         client.interceptors.request.eject(requestInterceptorId);
         client.interceptors.response.eject(responseInterceptorId);
       },
     };
   } catch (error) {
-    logError('[JWT Auth] Error setting up auth interceptor', { error: error.message });
+    safeLogError('[JWT Auth] Error setting up auth interceptor', { error: error.message });
     // Return no-op cleanup function on error
     return { remove: () => {} };
   }
