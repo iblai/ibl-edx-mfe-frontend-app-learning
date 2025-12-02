@@ -54,13 +54,22 @@ const ProgressTab = () => {
 
   // PHASE 3, STEP 8: useWindowSize from paragon
   // This might cause sendTrackEvent errors if paragon's analytics isn't mocked
+  // Use a defensive approach: try useWindowSize, but fallback to window.innerWidth
   let windowWidth;
   try {
-    windowWidth = useWindowSize().width;
+    const windowSize = useWindowSize();
+    windowWidth = windowSize?.width;
   } catch (error) {
     console.warn('[JWT Auth] useWindowSize() error, using fallback:', error);
     // Fallback: use window.innerWidth if available
     windowWidth = typeof window !== 'undefined' ? window.innerWidth : undefined;
+  }
+
+  // If windowWidth is still undefined, use a default (desktop width)
+  // This prevents the component from returning null and allows rendering
+  if (windowWidth === undefined) {
+    console.warn('[JWT Auth] windowWidth is undefined, using default 1200px');
+    windowWidth = 1200; // Default to desktop width
   }
 
   if (windowWidth === undefined) {
