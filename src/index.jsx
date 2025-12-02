@@ -9,30 +9,61 @@ import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Routes, Route } from 'react-router-dom';
 
-// PHASE 3, STEP 6: Mock analytics module at import level
+// PHASE 3, STEP 6: Mock analytics module at import level and runtime
 // This ensures sendTrackEvent is available when components import it
 // Components import: import { sendTrackEvent } from '@edx/frontend-platform/analytics'
+
+// Create mock functions
+const mockSendTrackEvent = function() {
+  // Silent no-op to avoid console spam
+  return Promise.resolve();
+};
+
+const mockSendTrackingLogEvent = function() {
+  // Silent no-op
+  return Promise.resolve();
+};
+
+// Try to mock the analytics module at import time
 try {
-  // Try to mock the analytics module if it's not initialized
   const analyticsModule = require('@edx/frontend-platform/analytics');
   if (analyticsModule) {
     // If module exists but sendTrackEvent is undefined, add mock
     if (!analyticsModule.sendTrackEvent || typeof analyticsModule.sendTrackEvent !== 'function') {
-      analyticsModule.sendTrackEvent = function() {
-        // Silent no-op to avoid console spam
-      };
-      console.log('[JWT Auth] Mocked sendTrackEvent in analytics module');
+      analyticsModule.sendTrackEvent = mockSendTrackEvent;
+      console.log('[JWT Auth] Mocked sendTrackEvent in analytics module (import time)');
     }
     if (!analyticsModule.sendTrackingLogEvent || typeof analyticsModule.sendTrackingLogEvent !== 'function') {
-      analyticsModule.sendTrackingLogEvent = function() {
-        // Silent no-op
-      };
-      console.log('[JWT Auth] Mocked sendTrackingLogEvent in analytics module');
+      analyticsModule.sendTrackingLogEvent = mockSendTrackingLogEvent;
+      console.log('[JWT Auth] Mocked sendTrackingLogEvent in analytics module (import time)');
     }
   }
 } catch (e) {
-  // Module might not be available yet - that's okay, we'll try again later
+  // Module might not be available yet - that's okay, we'll patch at runtime
   console.warn('[JWT Auth] Could not mock analytics module at import time:', e.message);
+}
+
+// Also patch at runtime after modules load (for cases where webpack alias doesn't work)
+if (typeof window !== 'undefined') {
+  // Use setTimeout to ensure this runs after modules are loaded
+  setTimeout(() => {
+    try {
+      // Try to require and patch the module
+      const analyticsModule = require('@edx/frontend-platform/analytics');
+      if (analyticsModule) {
+        if (!analyticsModule.sendTrackEvent || typeof analyticsModule.sendTrackEvent !== 'function') {
+          analyticsModule.sendTrackEvent = mockSendTrackEvent;
+          console.log('[JWT Auth] Mocked sendTrackEvent in analytics module (runtime)');
+        }
+        if (!analyticsModule.sendTrackingLogEvent || typeof analyticsModule.sendTrackingLogEvent !== 'function') {
+          analyticsModule.sendTrackingLogEvent = mockSendTrackingLogEvent;
+          console.log('[JWT Auth] Mocked sendTrackingLogEvent in analytics module (runtime)');
+        }
+      }
+    } catch (e) {
+      // Module might not be available - that's okay, webpack alias should handle it
+    }
+  }, 0);
 }
 
 import { Helmet } from 'react-helmet';
