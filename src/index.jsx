@@ -413,7 +413,11 @@ subscribe(APP_INIT_ERROR, (error) => {
   // If error is just the event name string, check for actual error elsewhere
   if (isEventNameString) {
     console.error('[JWT Auth] APP_INIT_ERROR - Error is event name string, checking for actual error...');
-    console.error('[JWT Auth] APP_INIT_ERROR - window.onerror last error:', window.onerror?.toString());
+    console.error('[JWT Auth] APP_INIT_ERROR - window.onerror last error:', window.__LAST_ERROR__);
+    console.error('[JWT Auth] APP_INIT_ERROR - window.__INIT_ERROR__:', window.__INIT_ERROR__);
+    console.error('[JWT Auth] APP_INIT_ERROR - document.referrer:', document.referrer);
+    console.error('[JWT Auth] APP_INIT_ERROR - window.location.origin:', window.location.origin);
+    console.error('[JWT Auth] APP_INIT_ERROR - parent origin:', window.parent !== window ? (window.parent.location?.origin || 'cross-origin') : 'same-origin');
 
     // Check if there's an error stored globally
     if (window.__FRONTEND_PLATFORM_ERROR__) {

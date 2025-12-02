@@ -23,7 +23,7 @@
 
         // Catch synchronous JavaScript errors
         window.onerror = function(message, source, lineno, colno, error) {
-          console.error('[JWT Auth] Error (window.onerror):', {
+          const errorInfo = {
             message: message,
             source: source,
             lineno: lineno,
@@ -37,7 +37,11 @@
             referrer: document.referrer,
             inIframe: window.self !== window.top,
             timestamp: new Date().toISOString()
-          });
+          };
+          console.error('[JWT Auth] Error (window.onerror):', errorInfo);
+          // Store error for later access
+          window.__LAST_ERROR__ = errorInfo;
+          window.__INIT_ERROR__ = error || { message: message, source: source, lineno: lineno, colno: colno };
           return false; // Don't prevent default error handling
         };
 
