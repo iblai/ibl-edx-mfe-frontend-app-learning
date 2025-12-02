@@ -38,7 +38,7 @@ import PreferencesUnsubscribe from './preferences-unsubscribe';
 import PageNotFound from './generic/PageNotFound';
 import { JWTAuthDebugger } from './hooks/JWTAuthDebugger';
 import { AuthenticatedHttpClientProvider } from './contexts/AuthenticatedHttpClientContext';
-import { setupAuthInterceptor } from './utils/setupAuthInterceptor';
+import { setupAuthInterceptor, setGlobalAuthState } from './utils/setupAuthInterceptor';
 import { logInfo } from '@edx/frontend-platform/logging';
 import { setupGlobalErrorHandlers, logInitializationMilestone } from './utils/error-logging';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -566,15 +566,69 @@ console.log('[JWT Auth] Starting frontend-platform initialize()', {
 const isInIframe = window.self !== window.top;
 const jwtAuthEnabled = process.env.JWT_AUTH_ENABLED === 'true' || !!process.env.JWT_TEST_TOKEN;
 const shouldRequireAuth = !(isInIframe && jwtAuthEnabled);
+const isJWTIframeMode = isInIframe && jwtAuthEnabled;
 
 console.log('[JWT Auth] Authentication requirements:', {
   isInIframe,
   jwtAuthEnabled,
   shouldRequireAuth,
-  reason: isInIframe && jwtAuthEnabled
+  isJWTIframeMode,
+  reason: isJWTIframeMode
     ? 'JWT mode in iframe - skipping cookie-based auth requirement'
     : 'Standard cookie-based auth required',
 });
+
+// If in JWT iframe mode, set up early JWT token detection and global auth state
+// This ensures API calls made during initialization use JWT tokens
+if (isJWTIframeMode) {
+  console.log('[JWT Auth] JWT iframe mode detected - setting up early token detection');
+
+  // Check for test token first
+  const testToken = process.env.JWT_TEST_TOKEN;
+  if (testToken) {
+    console.log('[JWT Auth] Test token found - setting global auth state to JWT mode', {
+      tokenLength: testToken.length,
+      tokenPreview: testToken.substring(0, 30) + '...',
+    });
+    setGlobalAuthState('jwt', testToken);
+  } else {
+    // Listen for JWT token from parent window via postMessage
+    // This needs to happen before React renders so API calls can use JWT
+    const jwtMessageHandler = (event) => {
+      // Only accept messages from parent window
+      if (event.source !== window.parent) {
+        return;
+      }
+
+      // Check for JWT token in message
+      if (event.data && event.data.type === 'auth.jwt.token' && event.data.token) {
+        const token = event.data.token.trim();
+        console.log('[JWT Auth] JWT token received via postMessage (early)', {
+          tokenLength: token.length,
+          tokenPreview: token.substring(0, 30) + '...',
+        });
+
+        // Set global auth state immediately
+        setGlobalAuthState('jwt', token);
+
+        // Remove listener after first token received
+        window.removeEventListener('message', jwtMessageHandler);
+      }
+    };
+
+    window.addEventListener('message', jwtMessageHandler);
+    console.log('[JWT Auth] Listening for JWT token from parent window (early)');
+
+    // Also check if token is already in window (set by inline script or other means)
+    if (window.__JWT_TOKEN__) {
+      console.log('[JWT Auth] JWT token found in window.__JWT_TOKEN__', {
+        tokenLength: window.__JWT_TOKEN__.length,
+        tokenPreview: window.__JWT_TOKEN__.substring(0, 30) + '...',
+      });
+      setGlobalAuthState('jwt', window.__JWT_TOKEN__);
+    }
+  }
+}
 
 // Wrap initialize in try-catch to catch any synchronous errors
 try {
