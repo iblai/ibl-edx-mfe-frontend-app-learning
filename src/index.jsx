@@ -495,6 +495,11 @@ subscribe(APP_INIT_ERROR, (error) => {
       }
     }
 
+    // Check authentication state (but in JWT iframe mode, this is expected to be false)
+    const isInIframe = window.self !== window.top;
+    const jwtAuthEnabled = process.env.JWT_AUTH_ENABLED === 'true' || !!process.env.JWT_TEST_TOKEN;
+    const isJWTIframeMode = isInIframe && jwtAuthEnabled;
+
     // Try to access authenticated user state at error time (safely, synchronously)
     const authStateResult = getAuthenticatedUserSafelySync();
     if (authStateResult.error) {
@@ -502,17 +507,27 @@ subscribe(APP_INIT_ERROR, (error) => {
         error: authStateResult.error,
         errorStack: authStateResult.errorStack,
         moduleAvailable: authStateResult.available,
+        isJWTIframeMode,
+        note: isJWTIframeMode
+          ? 'In JWT iframe mode, cookie-based auth is not required - this may be expected'
+          : 'Cookie-based auth is required - this is an error',
       });
       errorDetails.authenticatedUserError = authStateResult.error;
       errorDetails.authModuleAvailable = authStateResult.available;
+      errorDetails.isJWTIframeMode = isJWTIframeMode;
     } else {
       const authenticatedUser = authStateResult.user;
       console.error('[JWT Auth] APP_INIT_ERROR - Authenticated user state:', {
         hasAuthenticatedUser: !!authenticatedUser,
         authenticatedUserKeys: authenticatedUser ? Object.keys(authenticatedUser) : [],
         moduleAvailable: authStateResult.available,
+        isJWTIframeMode,
+        note: isJWTIframeMode && !authenticatedUser
+          ? 'In JWT iframe mode, hasAuthenticatedUser: false is expected (using JWT tokens instead)'
+          : 'Standard cookie-based auth mode',
       });
       errorDetails.authenticatedUserAtError = authenticatedUser;
+      errorDetails.isJWTIframeMode = isJWTIframeMode;
     }
   }
 
@@ -546,9 +561,25 @@ console.log('[JWT Auth] Starting frontend-platform initialize()', {
   initialNetworkRequestCount,
 });
 
+// Determine if we should require authenticated user
+// In JWT mode for iframes, we don't need cookie-based authentication
+const isInIframe = window.self !== window.top;
+const jwtAuthEnabled = process.env.JWT_AUTH_ENABLED === 'true' || !!process.env.JWT_TEST_TOKEN;
+const shouldRequireAuth = !(isInIframe && jwtAuthEnabled);
+
+console.log('[JWT Auth] Authentication requirements:', {
+  isInIframe,
+  jwtAuthEnabled,
+  shouldRequireAuth,
+  reason: isInIframe && jwtAuthEnabled
+    ? 'JWT mode in iframe - skipping cookie-based auth requirement'
+    : 'Standard cookie-based auth required',
+});
+
 // Wrap initialize in try-catch to catch any synchronous errors
 try {
   initialize({
+    requireAuthenticatedUser: shouldRequireAuth,
     handlers: {
       config: () => {
         logInitializationMilestone('Config handler called');
@@ -621,6 +652,11 @@ try {
     checkCount++;
     const elapsed = Date.now() - initStartTime;
 
+    // Check if we're in JWT iframe mode
+    const isInIframe = window.self !== window.top;
+    const jwtAuthEnabled = process.env.JWT_AUTH_ENABLED === 'true' || !!process.env.JWT_TEST_TOKEN;
+    const isJWTIframeMode = isInIframe && jwtAuthEnabled;
+
     // Try to access frontend-platform's auth state (safely, synchronously)
     const authStateResult = getAuthenticatedUserSafelySync();
 
@@ -629,11 +665,15 @@ try {
       console.log(`[JWT Auth] Post-init check #${checkCount} (${elapsed}ms) - Auth module status:`, {
         error: authStateResult.error,
         moduleAvailable: authStateResult.available,
+        isJWTIframeMode,
         hasInitError: !!window.__FRONTEND_PLATFORM_INIT_ERROR__,
         hasLoginRefreshResponse: !!window.__LOGIN_REFRESH_RESPONSE__,
         loginRefreshStatus: window.__LOGIN_REFRESH_RESPONSE__?.status,
         totalNetworkRequests: window.__ALL_NETWORK_REQUESTS__?.length || 0,
         failedNetworkRequests: window.__FAILED_NETWORK_REQUESTS__?.length || 0,
+        note: isJWTIframeMode
+          ? 'In JWT iframe mode - cookie-based auth not required'
+          : 'Cookie-based auth required - this may be an error',
         timestamp: new Date().toISOString(),
       });
     } else {
@@ -643,16 +683,29 @@ try {
         hasAuthenticatedUser: !!authenticatedUser,
         authenticatedUserKeys: authenticatedUser ? Object.keys(authenticatedUser) : [],
         moduleAvailable: authStateResult.available,
+        isJWTIframeMode,
         hasInitError: !!window.__FRONTEND_PLATFORM_INIT_ERROR__,
         hasLoginRefreshResponse: !!window.__LOGIN_REFRESH_RESPONSE__,
         loginRefreshStatus: window.__LOGIN_REFRESH_RESPONSE__?.status,
         totalNetworkRequests: window.__ALL_NETWORK_REQUESTS__?.length || 0,
         failedNetworkRequests: window.__FAILED_NETWORK_REQUESTS__?.length || 0,
+        note: isJWTIframeMode && !authenticatedUser
+          ? 'JWT iframe mode - hasAuthenticatedUser: false is expected (using JWT tokens)'
+          : 'Standard mode',
         timestamp: new Date().toISOString(),
       });
 
-      // If we have authenticated user, initialization likely succeeded
-      if (authenticatedUser && checkCount > 2) {
+      // In JWT iframe mode, we don't need authenticatedUser to be set
+      // The app should work with JWT tokens instead
+      if (isJWTIframeMode) {
+        // In JWT mode, we can stop checking after a few iterations
+        // The app should proceed even without cookie-based auth
+        if (checkCount > 3) {
+          clearInterval(checkInterval);
+          console.log('[JWT Auth] JWT iframe mode - stopping checks (cookie-based auth not required)');
+        }
+      } else if (authenticatedUser && checkCount > 2) {
+        // Standard mode - wait for authenticated user
         clearInterval(checkInterval);
         console.log('[JWT Auth] Authentication state confirmed, stopping periodic checks');
       }
