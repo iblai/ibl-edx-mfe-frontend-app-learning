@@ -44,9 +44,10 @@ try {
 }
 
 // Also patch at runtime after modules load (for cases where webpack alias doesn't work)
+// Use multiple strategies to ensure analytics is mocked
 if (typeof window !== 'undefined') {
-  // Use setTimeout to ensure this runs after modules are loaded
-  setTimeout(() => {
+  // Strategy 1: Patch immediately
+  const patchAnalytics = () => {
     try {
       // Try to require and patch the module
       const analyticsModule = require('@edx/frontend-platform/analytics');
@@ -59,11 +60,55 @@ if (typeof window !== 'undefined') {
           analyticsModule.sendTrackingLogEvent = mockSendTrackingLogEvent;
           console.log('[JWT Auth] Mocked sendTrackingLogEvent in analytics module (runtime)');
         }
+        // Also patch default export if it exists
+        if (analyticsModule.default) {
+          if (!analyticsModule.default.sendTrackEvent || typeof analyticsModule.default.sendTrackEvent !== 'function') {
+            analyticsModule.default.sendTrackEvent = mockSendTrackEvent;
+          }
+          if (!analyticsModule.default.sendTrackingLogEvent || typeof analyticsModule.default.sendTrackingLogEvent !== 'function') {
+            analyticsModule.default.sendTrackingLogEvent = mockSendTrackingLogEvent;
+          }
+        }
       }
     } catch (e) {
       // Module might not be available - that's okay, webpack alias should handle it
     }
-  }, 0);
+  };
+
+  // Patch immediately
+  patchAnalytics();
+
+  // Strategy 2: Patch after a short delay (for modules that load asynchronously)
+  setTimeout(patchAnalytics, 0);
+  setTimeout(patchAnalytics, 100);
+  setTimeout(patchAnalytics, 500);
+
+  // Strategy 3: Intercept require.cache if available (CommonJS)
+  if (typeof require !== 'undefined' && require.cache) {
+    const originalRequire = require;
+    const analyticsPath = '@edx/frontend-platform/analytics';
+
+    // Try to find and patch the cached module
+    Object.keys(require.cache).forEach((key) => {
+      if (key.includes('frontend-platform') && key.includes('analytics')) {
+        try {
+          const cachedModule = require.cache[key];
+          if (cachedModule && cachedModule.exports) {
+            if (!cachedModule.exports.sendTrackEvent || typeof cachedModule.exports.sendTrackEvent !== 'function') {
+              cachedModule.exports.sendTrackEvent = mockSendTrackEvent;
+              console.log('[JWT Auth] Patched sendTrackEvent in require.cache:', key);
+            }
+            if (!cachedModule.exports.sendTrackingLogEvent || typeof cachedModule.exports.sendTrackingLogEvent !== 'function') {
+              cachedModule.exports.sendTrackingLogEvent = mockSendTrackingLogEvent;
+              console.log('[JWT Auth] Patched sendTrackingLogEvent in require.cache:', key);
+            }
+          }
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+    });
+  }
 }
 
 import { Helmet } from 'react-helmet';
@@ -368,6 +413,33 @@ function renderReactApp() {
   if (MINIMAL_RENDER_MODE) {
     console.log('[JWT Auth] Using MINIMAL_RENDER_MODE - rendering ProgressTabMinimal with JWT data fetching');
     console.log('[JWT Auth] Root element:', rootElement);
+
+    // CRITICAL: Patch analytics module RIGHT BEFORE React renders
+    // This ensures sendTrackEvent is available when components try to use it
+    try {
+      const analyticsModule = require('@edx/frontend-platform/analytics');
+      if (analyticsModule) {
+        if (!analyticsModule.sendTrackEvent || typeof analyticsModule.sendTrackEvent !== 'function') {
+          analyticsModule.sendTrackEvent = mockSendTrackEvent;
+          console.log('[JWT Auth] Pre-render: Patched sendTrackEvent');
+        }
+        if (!analyticsModule.sendTrackingLogEvent || typeof analyticsModule.sendTrackingLogEvent !== 'function') {
+          analyticsModule.sendTrackingLogEvent = mockSendTrackingLogEvent;
+          console.log('[JWT Auth] Pre-render: Patched sendTrackingLogEvent');
+        }
+        // Also ensure default export is patched
+        if (analyticsModule.default) {
+          if (!analyticsModule.default.sendTrackEvent || typeof analyticsModule.default.sendTrackEvent !== 'function') {
+            analyticsModule.default.sendTrackEvent = mockSendTrackEvent;
+          }
+          if (!analyticsModule.default.sendTrackingLogEvent || typeof analyticsModule.default.sendTrackingLogEvent !== 'function') {
+            analyticsModule.default.sendTrackingLogEvent = mockSendTrackingLogEvent;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[JWT Auth] Pre-render: Could not patch analytics module:', e.message);
+    }
 
     // Ensure auth interceptor is set up for JWT token support
     if (!interceptorCleanup) {
