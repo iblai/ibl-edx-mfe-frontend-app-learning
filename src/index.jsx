@@ -447,12 +447,18 @@ subscribe(APP_INIT_ERROR, (error) => {
 
     // Check if the only error is a SecurityError from accessing parent.location
     // This is expected in cross-origin iframes and shouldn't block rendering
-    if (hasSecurityError && window.__LAST_ERROR__?.error?.name === 'SecurityError' &&
-        window.__LAST_ERROR__?.error?.message?.includes('cross-origin frame')) {
-      console.warn('[JWT Auth] APP_INIT_ERROR - Only SecurityError detected (expected in cross-origin iframe). Attempting to continue...');
-      // Don't render error page - let the app continue
-      // The APP_READY handler will render the app
-      return;
+    // In JWT iframe mode, if we have a token and the only issue is the SecurityError, continue
+    if (hasSecurityError && isJWTIframeMode) {
+      // Check if we have a JWT token (which means auth is working)
+      const { getGlobalAuthState } = require('./utils/setupAuthInterceptor');
+      const globalAuthState = getGlobalAuthState();
+
+      if (globalAuthState.mode === 'jwt' && globalAuthState.jwtToken) {
+        console.warn('[JWT Auth] APP_INIT_ERROR - Only SecurityError detected (expected in cross-origin iframe). JWT token available. Attempting to continue...');
+        // Don't render error page - let the app continue
+        // The APP_READY handler will render the app
+        return;
+      }
     }
 
     // Check if there's an error stored globally
