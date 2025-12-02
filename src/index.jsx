@@ -3,7 +3,6 @@ import {
   mergeConfig,
   getConfig,
 } from '@edx/frontend-platform';
-import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 import { AppProvider, ErrorPage, PageWrap } from '@edx/frontend-platform/react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -43,6 +42,60 @@ import { setupAuthInterceptor } from './utils/setupAuthInterceptor';
 import { logInfo } from '@edx/frontend-platform/logging';
 import { setupGlobalErrorHandlers, logInitializationMilestone } from './utils/error-logging';
 import { ErrorBoundary } from './components/ErrorBoundary';
+
+// Safe wrapper for getAuthenticatedUser that handles module initialization issues
+// The @edx/frontend-platform/auth module may not be initialized immediately after initialize() returns
+let authModuleAvailable = false;
+let getAuthenticatedUserSafe = null;
+
+function checkAuthModuleAvailability() {
+  try {
+    // Try to dynamically require the auth module to check if it's available
+    // This is a defensive check - the module might not be initialized yet
+    // eslint-disable-next-line import/no-unresolved
+    const authModule = require('@edx/frontend-platform/auth');
+    if (authModule && typeof authModule.getAuthenticatedUser === 'function') {
+      authModuleAvailable = true;
+      getAuthenticatedUserSafe = authModule.getAuthenticatedUser;
+      return true;
+    }
+  } catch (error) {
+    // Module not available yet - this is expected during early initialization
+    return false;
+  }
+  return false;
+}
+
+// Try to get authenticated user safely, handling module initialization issues
+function getAuthenticatedUserSafely() {
+  // First check if module is available
+  if (!authModuleAvailable) {
+    const isAvailable = checkAuthModuleAvailability();
+    if (!isAvailable) {
+      return { error: 'Auth module not initialized yet', available: false };
+    }
+  }
+
+  try {
+    if (getAuthenticatedUserSafe) {
+      const user = getAuthenticatedUserSafe();
+      return { user, available: true, error: null };
+    } else {
+      // Try direct require as fallback
+      // eslint-disable-next-line import/no-unresolved
+      const authModule = require('@edx/frontend-platform/auth');
+      if (authModule && typeof authModule.getAuthenticatedUser === 'function') {
+        const user = authModule.getAuthenticatedUser();
+        getAuthenticatedUserSafe = authModule.getAuthenticatedUser;
+        authModuleAvailable = true;
+        return { user, available: true, error: null };
+      }
+      return { error: 'getAuthenticatedUser function not found', available: false };
+    }
+  } catch (error) {
+    return { error: error.message, available: false, errorStack: error.stack };
+  }
+}
 
 // Set up global error handlers IMMEDIATELY - before anything else runs
 // This catches errors that occur before React mounts
@@ -392,20 +445,25 @@ subscribe(APP_INIT_ERROR, (error) => {
       }
     }
 
-    // Try to access authenticated user state at error time
-    try {
-      const authenticatedUser = getAuthenticatedUser();
+    // Try to access authenticated user state at error time (safely)
+    const authStateResult = getAuthenticatedUserSafely();
+    if (authStateResult.error) {
+      console.error('[JWT Auth] APP_INIT_ERROR - Could not access authenticated user:', {
+        error: authStateResult.error,
+        errorStack: authStateResult.errorStack,
+        moduleAvailable: authStateResult.available,
+        authModuleAvailable,
+      });
+      errorDetails.authenticatedUserError = authStateResult.error;
+      errorDetails.authModuleAvailable = authModuleAvailable;
+    } else {
+      const authenticatedUser = authStateResult.user;
       console.error('[JWT Auth] APP_INIT_ERROR - Authenticated user state:', {
         hasAuthenticatedUser: !!authenticatedUser,
         authenticatedUserKeys: authenticatedUser ? Object.keys(authenticatedUser) : [],
+        moduleAvailable: authStateResult.available,
       });
       errorDetails.authenticatedUserAtError = authenticatedUser;
-    } catch (authError) {
-      console.error('[JWT Auth] APP_INIT_ERROR - Could not access authenticated user:', {
-        error: authError.message,
-        errorStack: authError.stack,
-      });
-      errorDetails.authenticatedUserError = authError.message;
     }
   }
 
@@ -514,13 +572,29 @@ try {
     checkCount++;
     const elapsed = Date.now() - initStartTime;
 
-    try {
-      // Try to access frontend-platform's auth state
-      const authenticatedUser = getAuthenticatedUser();
+    // Try to access frontend-platform's auth state (safely)
+    const authStateResult = getAuthenticatedUserSafely();
+
+    if (authStateResult.error) {
+      // Auth module not available or error accessing it
+      console.log(`[JWT Auth] Post-init check #${checkCount} (${elapsed}ms) - Auth module status:`, {
+        error: authStateResult.error,
+        moduleAvailable: authStateResult.available,
+        authModuleAvailable,
+        hasInitError: !!window.__FRONTEND_PLATFORM_INIT_ERROR__,
+        hasLoginRefreshResponse: !!window.__LOGIN_REFRESH_RESPONSE__,
+        loginRefreshStatus: window.__LOGIN_REFRESH_RESPONSE__?.status,
+        totalNetworkRequests: window.__ALL_NETWORK_REQUESTS__?.length || 0,
+        failedNetworkRequests: window.__FAILED_NETWORK_REQUESTS__?.length || 0,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      const authenticatedUser = authStateResult.user;
 
       console.log(`[JWT Auth] Post-init check #${checkCount} (${elapsed}ms):`, {
         hasAuthenticatedUser: !!authenticatedUser,
         authenticatedUserKeys: authenticatedUser ? Object.keys(authenticatedUser) : [],
+        moduleAvailable: authStateResult.available,
         hasInitError: !!window.__FRONTEND_PLATFORM_INIT_ERROR__,
         hasLoginRefreshResponse: !!window.__LOGIN_REFRESH_RESPONSE__,
         loginRefreshStatus: window.__LOGIN_REFRESH_RESPONSE__?.status,
@@ -534,14 +608,6 @@ try {
         clearInterval(checkInterval);
         console.log('[JWT Auth] Authentication state confirmed, stopping periodic checks');
       }
-    } catch (error) {
-      // If getAuthenticatedUser throws, log it but continue checking
-      console.error(`[JWT Auth] Post-init check #${checkCount} - Error accessing auth state:`, {
-        error: error.message,
-        errorStack: error.stack,
-        elapsed,
-        timestamp: new Date().toISOString(),
-      });
     }
 
     // Stop checking after maxChecks or if APP_READY fired
