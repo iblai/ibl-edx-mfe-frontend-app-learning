@@ -19,12 +19,14 @@ const TabContainer = (props) => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    // The courseId from the URL is the course we WANT to load.
-    if (isProgressTab) {
-      dispatch(fetch(courseIdFromUrl, targetUserId));
-    } else {
-      dispatch(fetch(courseIdFromUrl));
-    }
+    // DEBUGGING: Skip all backend calls - just show static page
+    // TODO: Re-enable when iframe works
+    // if (isProgressTab) {
+    //   dispatch(fetch(courseIdFromUrl, targetUserId));
+    // } else {
+    //   dispatch(fetch(courseIdFromUrl));
+    // }
+    console.log('[JWT Auth] TabContainer: Skipping fetch for debugging - no backend calls');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseIdFromUrl, targetUserId]);
 
