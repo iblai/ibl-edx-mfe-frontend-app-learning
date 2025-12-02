@@ -45,53 +45,59 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Safe wrapper for getAuthenticatedUser that handles module initialization issues
 // The @edx/frontend-platform/auth module may not be initialized immediately after initialize() returns
-let authModuleAvailable = false;
-let getAuthenticatedUserSafe = null;
-
-function checkAuthModuleAvailability() {
-  try {
-    // Try to dynamically require the auth module to check if it's available
-    // This is a defensive check - the module might not be initialized yet
-    // eslint-disable-next-line import/no-unresolved
-    const authModule = require('@edx/frontend-platform/auth');
-    if (authModule && typeof authModule.getAuthenticatedUser === 'function') {
-      authModuleAvailable = true;
-      getAuthenticatedUserSafe = authModule.getAuthenticatedUser;
-      return true;
-    }
-  } catch (error) {
-    // Module not available yet - this is expected during early initialization
-    return false;
-  }
-  return false;
-}
+// We use dynamic import to safely access the module without causing initialization errors
+let authModulePromise = null;
+let authModuleCache = null;
 
 // Try to get authenticated user safely, handling module initialization issues
-function getAuthenticatedUserSafely() {
-  // First check if module is available
-  if (!authModuleAvailable) {
-    const isAvailable = checkAuthModuleAvailability();
-    if (!isAvailable) {
-      return { error: 'Auth module not initialized yet', available: false };
-    }
-  }
-
+async function getAuthenticatedUserSafely() {
   try {
-    if (getAuthenticatedUserSafe) {
-      const user = getAuthenticatedUserSafe();
-      return { user, available: true, error: null };
-    } else {
-      // Try direct require as fallback
-      // eslint-disable-next-line import/no-unresolved
-      const authModule = require('@edx/frontend-platform/auth');
-      if (authModule && typeof authModule.getAuthenticatedUser === 'function') {
-        const user = authModule.getAuthenticatedUser();
-        getAuthenticatedUserSafe = authModule.getAuthenticatedUser;
-        authModuleAvailable = true;
-        return { user, available: true, error: null };
+    // Try dynamic import if we haven't cached the module yet
+    if (!authModuleCache) {
+      if (!authModulePromise) {
+        authModulePromise = import('@edx/frontend-platform/auth').catch((error) => {
+          console.error('[JWT Auth] Failed to import auth module:', error);
+          return null;
+        });
       }
+
+      const authModule = await authModulePromise;
+      if (!authModule) {
+        return { error: 'Auth module import failed', available: false };
+      }
+
+      if (!authModule.getAuthenticatedUser || typeof authModule.getAuthenticatedUser !== 'function') {
+        return { error: 'getAuthenticatedUser function not found in auth module', available: false };
+      }
+
+      authModuleCache = authModule;
+    }
+
+    // Now try to call getAuthenticatedUser
+    const user = authModuleCache.getAuthenticatedUser();
+    return { user, available: true, error: null };
+  } catch (error) {
+    return { error: error.message, available: false, errorStack: error.stack };
+  }
+}
+
+// Synchronous version that returns a promise-like result immediately
+// This is used in places where we can't use async/await
+function getAuthenticatedUserSafelySync() {
+  try {
+    // Try to access the module synchronously (may fail if not initialized)
+    // eslint-disable-next-line import/no-unresolved
+    const authModule = require('@edx/frontend-platform/auth');
+    if (!authModule) {
+      return { error: 'Auth module is undefined', available: false };
+    }
+
+    if (!authModule.getAuthenticatedUser || typeof authModule.getAuthenticatedUser !== 'function') {
       return { error: 'getAuthenticatedUser function not found', available: false };
     }
+
+    const user = authModule.getAuthenticatedUser();
+    return { user, available: true, error: null };
   } catch (error) {
     return { error: error.message, available: false, errorStack: error.stack };
   }
@@ -445,17 +451,16 @@ subscribe(APP_INIT_ERROR, (error) => {
       }
     }
 
-    // Try to access authenticated user state at error time (safely)
-    const authStateResult = getAuthenticatedUserSafely();
+    // Try to access authenticated user state at error time (safely, synchronously)
+    const authStateResult = getAuthenticatedUserSafelySync();
     if (authStateResult.error) {
       console.error('[JWT Auth] APP_INIT_ERROR - Could not access authenticated user:', {
         error: authStateResult.error,
         errorStack: authStateResult.errorStack,
         moduleAvailable: authStateResult.available,
-        authModuleAvailable,
       });
       errorDetails.authenticatedUserError = authStateResult.error;
-      errorDetails.authModuleAvailable = authModuleAvailable;
+      errorDetails.authModuleAvailable = authStateResult.available;
     } else {
       const authenticatedUser = authStateResult.user;
       console.error('[JWT Auth] APP_INIT_ERROR - Authenticated user state:', {
@@ -572,15 +577,14 @@ try {
     checkCount++;
     const elapsed = Date.now() - initStartTime;
 
-    // Try to access frontend-platform's auth state (safely)
-    const authStateResult = getAuthenticatedUserSafely();
+    // Try to access frontend-platform's auth state (safely, synchronously)
+    const authStateResult = getAuthenticatedUserSafelySync();
 
     if (authStateResult.error) {
       // Auth module not available or error accessing it
       console.log(`[JWT Auth] Post-init check #${checkCount} (${elapsed}ms) - Auth module status:`, {
         error: authStateResult.error,
         moduleAvailable: authStateResult.available,
-        authModuleAvailable,
         hasInitError: !!window.__FRONTEND_PLATFORM_INIT_ERROR__,
         hasLoginRefreshResponse: !!window.__LOGIN_REFRESH_RESPONSE__,
         loginRefreshStatus: window.__LOGIN_REFRESH_RESPONSE__?.status,
