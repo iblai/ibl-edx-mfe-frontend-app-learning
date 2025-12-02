@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import axios from 'axios';
 import { getConfig } from '@edx/frontend-platform';
 import { camelCaseObject } from '@edx/frontend-platform';
 import { getGlobalAuthState } from '../../utils/setupAuthInterceptor';
+import { addModel } from '../../generic/model-store';
+import { fetchTabSuccess } from '../../course-home/data/slice';
 
 /**
  * Minimal ProgressTab component that fetches data using JWT token
  * Bypasses Redux store and complex providers
  */
 const ProgressTabMinimal = () => {
+  const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [progressData, setProgressData] = useState(null);
@@ -71,6 +75,30 @@ const ProgressTabMinimal = () => {
         const camelCasedData = camelCaseObject(data);
 
         console.log('[JWT Auth] ProgressTabMinimal - Progress data received:', camelCasedData);
+
+        // PHASE 1, STEP 3: Also store data in Redux so useModel() can access it
+        // This allows original ProgressTab components to work with Redux
+        dispatch(addModel({
+          modelType: 'progress',
+          model: {
+            id: courseId,
+            ...camelCasedData,
+          },
+        }));
+
+        // Also set courseId in Redux state for useContextId() hook
+        dispatch(addModel({
+          modelType: 'courseHomeMeta',
+          model: {
+            id: courseId,
+            courseId, // This makes useContextId() work
+          },
+        }));
+
+        dispatch(fetchTabSuccess({ courseId }));
+
+        console.log('[JWT Auth] ProgressTabMinimal - Data stored in Redux store');
+
         setProgressData(camelCasedData);
         setLoading(false);
       } catch (err) {
