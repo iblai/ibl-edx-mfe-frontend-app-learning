@@ -312,14 +312,18 @@ subscribe(APP_READY, () => {
                       path={route}
                       element={(
                         <DecodePageRoute>
-                          <TabContainer
+                          {/* DEBUGGING: Bypass TabContainer and TabPage - just render ProgressTab directly */}
+                          {/* This prevents all backend calls - just shows static message */}
+                          {/* TODO: Re-enable TabContainer when iframe works */}
+                          <ProgressTab />
+                          {/* <TabContainer
                             tab="progress"
                             fetch={fetchProgressTab}
                             slice="courseHome"
                             isProgressTab
                           >
                             <ProgressTab />
-                          </TabContainer>
+                          </TabContainer> */}
                         </DecodePageRoute>
                       )}
                     />
