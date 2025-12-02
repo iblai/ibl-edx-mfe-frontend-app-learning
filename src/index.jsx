@@ -4,6 +4,7 @@ import {
   getConfig,
 } from '@edx/frontend-platform';
 import { AppProvider, ErrorPage, PageWrap } from '@edx/frontend-platform/react';
+import { IntlProvider } from '@edx/frontend-platform/i18n';
 import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Routes, Route } from 'react-router-dom';
@@ -24,6 +25,7 @@ import DatesTab from './course-home/dates-tab';
 import GoalUnsubscribe from './course-home/goal-unsubscribe';
 import ProgressTab from './course-home/progress-tab/ProgressTab';
 import ProgressTabMinimal from './course-home/progress-tab/ProgressTabMinimal';
+// ProgressTabMinimal fetches data and stores in Redux, then renders ProgressTab
 import { TabContainer } from './tab-page';
 
 import { fetchDatesTab, fetchOutlineTab, fetchProgressTab } from './course-home/data';
@@ -229,25 +231,56 @@ if (MINIMAL_RENDER_MODE) {
 }
 
 // Simple ErrorBoundary that doesn't depend on frontend-platform
+// Prevents infinite loops by only logging errors once
 class SimpleErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorCount: 0 };
+    this.errorLogged = false;
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, error };
+    return { hasError: true, error: error };
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('[JWT Auth] SimpleErrorBoundary caught error:', error, errorInfo);
+    // Only log error once to prevent console spam
+    if (!this.errorLogged) {
+      console.error('[JWT Auth] SimpleErrorBoundary caught error:', error, errorInfo);
+      this.errorLogged = true;
+    }
+
+    // Prevent infinite loops - reset error state after a delay
+    if (this.state.errorCount < 3) {
+      setTimeout(() => {
+        this.setState({ hasError: false, error: null, errorCount: this.state.errorCount + 1 });
+        this.errorLogged = false;
+      }, 100);
+    }
   }
 
   render() {
+    // If we've had too many errors, show fallback instead of rendering children
+    if (this.state.errorCount >= 3) {
+      return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <div style={{ fontSize: '18px', color: '#dc3545' }}>
+            Error: Component failed to render after multiple attempts
+          </div>
+          <div style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
+            Check console for details
+          </div>
+        </div>
+      );
+    }
+
     if (this.state.hasError) {
-      // Just render the children anyway - we want to see the static page
-      console.warn('[JWT Auth] ErrorBoundary caught error but rendering anyway:', this.state.error);
-      return this.props.children;
+      // Log warning only once
+      if (!this.errorLogged) {
+        console.warn('[JWT Auth] ErrorBoundary caught error but rendering anyway:', this.state.error);
+      }
+      // Return null to break the loop, or show a fallback
+      return null;
     }
     return this.props.children;
   }
@@ -291,14 +324,17 @@ function renderReactApp() {
       reactRoot = createRoot(rootElement);
 
       // PHASE 1, STEP 1: Add Redux Store Provider
-      // This enables useModel() hook that ProgressTab needs
+      // PHASE 3, STEP 7: Add IntlProvider for i18n (useIntl hook)
+      // This enables useModel() hook and useIntl() hook that ProgressTab needs
       reactRoot.render(
         <SimpleErrorBoundary>
-          <AppProvider store={store}>
-            <div style={{ minHeight: '100vh', padding: '20px', backgroundColor: '#f5f5f5' }}>
-              <ProgressTabMinimal />
-            </div>
-          </AppProvider>
+          <IntlProvider locale="en" messages={messages}>
+            <AppProvider store={store}>
+              <div style={{ minHeight: '100vh', padding: '20px', backgroundColor: '#f5f5f5' }}>
+                <ProgressTabMinimal />
+              </div>
+            </AppProvider>
+          </IntlProvider>
         </SimpleErrorBoundary>
       );
 
@@ -323,16 +359,16 @@ function renderReactApp() {
   reactRoot.render(
     <StrictMode>
       <ErrorBoundary>
-        <AppProvider store={store}>
-          <Helmet>
-            <link rel="shortcut icon" href={getConfig().FAVICON_URL} type="image/x-icon" />
-          </Helmet>
-          <PathFixesProvider>
-            <NoticesProvider>
+      <AppProvider store={store}>
+        <Helmet>
+          <link rel="shortcut icon" href={getConfig().FAVICON_URL} type="image/x-icon" />
+        </Helmet>
+        <PathFixesProvider>
+          <NoticesProvider>
               <AuthenticatedHttpClientProvider>
-                <UserMessagesProvider>
+            <UserMessagesProvider>
                   <JWTAuthDebugger />
-                <div className="app-container">
+              <div className="app-container">
                 <Routes>
                   <Route path="*" element={<PageWrap><PageNotFound /></PageWrap>} />
                   <Route path={ROUTES.UNSUBSCRIBE} element={<PageWrap><GoalUnsubscribe /></PageWrap>} />
@@ -393,7 +429,7 @@ function renderReactApp() {
                       path={route}
                       element={(
                         <DecodePageRoute>
-                          <ProgressTab />
+                            <ProgressTab />
                         </DecodePageRoute>
                       )}
                     />
@@ -420,8 +456,8 @@ function renderReactApp() {
                     />
                   ))}
                 </Routes>
-                </div>
-              </UserMessagesProvider>
+              </div>
+            </UserMessagesProvider>
             </AuthenticatedHttpClientProvider>
           </NoticesProvider>
         </PathFixesProvider>
@@ -935,13 +971,13 @@ if (isJWTIframeMode) {
 
 // Wrap initialize in try-catch to catch any synchronous errors
 try {
-  initialize({
+initialize({
     requireAuthenticatedUser: shouldRequireAuth,
-    handlers: {
-      config: () => {
+  handlers: {
+    config: () => {
         logInitializationMilestone('Config handler called');
         try {
-          mergeConfig({
+      mergeConfig({
         CONTACT_URL: process.env.CONTACT_URL || null,
         CREDENTIALS_BASE_URL: process.env.CREDENTIALS_BASE_URL || null,
         CREDIT_HELP_LINK_URL: process.env.CREDIT_HELP_LINK_URL || null,
@@ -987,10 +1023,10 @@ try {
           window.__CONFIG_HANDLER_ERROR__ = configError;
           throw configError; // Re-throw to let frontend-platform handle it
         }
-      },
     },
-    messages,
-  });
+  },
+  messages,
+});
 
   // Log when initialize() returns (it's synchronous, but frontend-platform may do async work)
   const initDuration = Date.now() - initStartTime;
