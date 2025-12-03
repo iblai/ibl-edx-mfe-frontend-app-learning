@@ -201,6 +201,47 @@ export function setupAuthInterceptor() {
           });
         }
 
+        // CRITICAL: Final verification - ensure Authorization header is set correctly
+        // Axios merges headers from common, method-specific, and direct properties
+        // We need to ensure it's in the right place for Axios to use it
+        if (mode === 'jwt' && jwtToken) {
+          // Final check - verify header is accessible from all locations
+          const directHeader = config.headers.Authorization;
+          const commonHeader = config.headers.common?.Authorization;
+          const methodHeader = config.headers[method]?.Authorization;
+
+          // If any are missing, set them all again
+          if (!directHeader || !commonHeader || !methodHeader) {
+            const authHeaderValue = `JWT ${jwtToken}`;
+            config.headers.Authorization = authHeaderValue;
+            if (!config.headers.common) {
+              config.headers.common = {};
+            }
+            config.headers.common.Authorization = authHeaderValue;
+            if (!config.headers[method]) {
+              config.headers[method] = {};
+            }
+            config.headers[method].Authorization = authHeaderValue;
+
+            console.warn('[JWT Auth] Re-applied Authorization header - some locations were missing', {
+              url,
+              hadDirect: !!directHeader,
+              hadCommon: !!commonHeader,
+              hadMethod: !!methodHeader,
+            });
+          }
+
+          // Final verification log
+          console.log('[JWT Auth] Final header verification before request', {
+            url,
+            method: config.method,
+            directHeader: config.headers.Authorization ? `${config.headers.Authorization.substring(0, 50)}...` : 'MISSING',
+            commonHeader: config.headers.common?.Authorization ? `${config.headers.common.Authorization.substring(0, 50)}...` : 'MISSING',
+            methodHeader: config.headers[method]?.Authorization ? `${config.headers[method].Authorization.substring(0, 50)}...` : 'MISSING',
+            allHeadersKeys: Object.keys(config.headers),
+          });
+        }
+
         // Log request details AFTER all modifications (so we see the final config)
         logRequestDetails(config, 'request');
 

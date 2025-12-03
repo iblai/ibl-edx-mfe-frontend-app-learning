@@ -249,7 +249,28 @@ export function logErrorResponse(error) {
     timestamp: new Date().toISOString(),
   };
 
-  // Truncate Authorization header if present
+  // Log all header locations to debug header merging issues
+  const allHeaderLocations = {
+    direct: logData.requestHeaders.Authorization,
+    common: logData.requestHeaders.common?.Authorization,
+    get: logData.requestHeaders.get?.Authorization,
+    post: logData.requestHeaders.post?.Authorization,
+  };
+
+  // Truncate Authorization header if present (in all locations)
+  Object.keys(allHeaderLocations).forEach(key => {
+    if (allHeaderLocations[key]) {
+      const authHeader = allHeaderLocations[key];
+      allHeaderLocations[key] = authHeader.length > 50
+        ? `${authHeader.substring(0, 50)}...`
+        : authHeader;
+    }
+  });
+
+  // Add header locations to log data
+  logData.headerLocations = allHeaderLocations;
+
+  // Truncate Authorization header if present (for backward compatibility)
   if (logData.requestHeaders.Authorization) {
     const authHeader = logData.requestHeaders.Authorization;
     logData.requestHeaders.Authorization = authHeader.length > 50
