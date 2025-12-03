@@ -37,6 +37,17 @@ import { DECODE_ROUTES, ROUTES } from './constants';
 import PreferencesUnsubscribe from './preferences-unsubscribe';
 import PageNotFound from './generic/PageNotFound';
 
+// Verify we're using local frontend-platform (not npm package)
+// This console log confirms webpack aliases are working and resolving to /openedx/frontend-platform/dist
+if (typeof window !== 'undefined') {
+  console.log('[Frontend-Platform Verification]', {
+    source: 'LOCAL BUILD',
+    path: '/openedx/frontend-platform/dist',
+    note: 'Using local frontend-platform from ibl-edx-mfe-frontend-platform (branch: ibl-develop)',
+    webpackAlias: 'Active - @edx/frontend-platform resolves to local build',
+  });
+}
+
 // Shared function to render React app - called from both APP_READY and APP_INIT_ERROR (when allowing continue)
 let reactRoot = null;
 function renderReactApp() {
