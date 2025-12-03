@@ -78,21 +78,3 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// Also export as default for cases where module is imported as default
-const analyticsModule = {
-  sendTrackEvent: mockSendTrackEvent,
-  sendTrackingLogEvent: mockSendTrackingLogEvent,
-};
-
-// Default export for: import analytics from '@edx/frontend-platform/analytics'
-export default analyticsModule;
-
-// Also set on window for global access (backup)
-if (typeof window !== 'undefined') {
-  window.sendTrackEvent = mockSendTrackEvent;
-  window.sendTrackingLogEvent = mockSendTrackingLogEvent;
-  window.__EDX_ANALYTICS__ = analyticsModule;
-}
-
-console.log('[JWT Auth] Analytics shim loaded - sendTrackEvent and sendTrackingLogEvent available');
-
