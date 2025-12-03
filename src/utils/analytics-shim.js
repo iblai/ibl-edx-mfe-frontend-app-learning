@@ -71,6 +71,22 @@ if (typeof window !== 'undefined') {
   window.sendTrackingLogEvent = mockSendTrackingLogEvent;
   window.__EDX_ANALYTICS__ = analyticsProxy;
 
+  // Also provide a global `analytics` object for libraries that expect Segment-style globals.
+  // Some code paths (including Paragon/theme hooks) may call analytics.sendTrackEvent(...)
+  // instead of importing from @edx/frontend-platform/analytics directly.
+  if (!window.analytics) {
+    window.analytics = {};
+  }
+  if (typeof window.analytics.sendTrackEvent !== 'function') {
+    window.analytics.sendTrackEvent = mockSendTrackEvent;
+  }
+  // For safety, also provide a generic `track` method that some analytics clients expect.
+  if (typeof window.analytics.track !== 'function') {
+    window.analytics.track = function () {
+      return Promise.resolve();
+    };
+  }
+
   // Log that shim is loaded (only once)
   if (!window.__ANALYTICS_SHIM_LOADED__) {
     console.log('[JWT Auth] Analytics shim loaded - sendTrackEvent and sendTrackingLogEvent available');
