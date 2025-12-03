@@ -541,28 +541,46 @@ function renderReactApp() {
     console.log('[JWT Auth] Pre-render: Patching analytics globally');
     patchAnalyticsGlobally();
 
-    // AGGRESSIVE PATCH: Also patch require.cache more aggressively
+    // AGGRESSIVE PATCH: Replace analytics module in require.cache BEFORE React renders
     // Paragon components might have already loaded analytics as undefined
+    // We need to replace the entire module export, not just patch properties
     if (typeof require !== 'undefined' && require.cache) {
+      // Create a comprehensive analytics mock object
+      const analyticsMockExports = {
+        sendTrackEvent: mockSendTrackEvent,
+        sendTrackingLogEvent: mockSendTrackingLogEvent,
+        default: {
+          sendTrackEvent: mockSendTrackEvent,
+          sendTrackingLogEvent: mockSendTrackingLogEvent,
+        }
+      };
+
+      // Use Proxy to catch any property access
+      const analyticsProxyExports = new Proxy(analyticsMockExports, {
+        get: function(target, prop) {
+          if (prop in target) {
+            return target[prop];
+          }
+          if (typeof prop === 'string' && prop.toLowerCase().includes('track')) {
+            return mockSendTrackEvent;
+          }
+          if (prop === 'default') {
+            return analyticsProxyExports;
+          }
+          return undefined;
+        }
+      });
+
       Object.keys(require.cache).forEach((key) => {
         // Patch ANY module that might be analytics-related
-        if (key.includes('analytics') || key.includes('track')) {
+        if (key.includes('analytics') || key.includes('track') || key.includes('frontend-platform')) {
           try {
             const cachedModule = require.cache[key];
-            if (cachedModule && cachedModule.exports) {
-              // If exports is undefined or doesn't have sendTrackEvent, patch it
-              if (!cachedModule.exports || !cachedModule.exports.sendTrackEvent) {
-                if (!cachedModule.exports) {
-                  cachedModule.exports = {};
-                }
-                cachedModule.exports.sendTrackEvent = mockSendTrackEvent;
-                cachedModule.exports.sendTrackingLogEvent = mockSendTrackingLogEvent;
-                cachedModule.exports.default = {
-                  sendTrackEvent: mockSendTrackEvent,
-                  sendTrackingLogEvent: mockSendTrackingLogEvent,
-                };
-                console.log('[JWT Auth] Pre-render: Aggressively patched analytics module:', key);
-              }
+            if (cachedModule) {
+              // REPLACE the entire exports object, not just patch properties
+              // This ensures paragon gets our mock even if it cached undefined
+              cachedModule.exports = analyticsProxyExports;
+              console.log('[JWT Auth] Pre-render: Replaced analytics module exports:', key);
             }
           } catch (e) {
             // Ignore errors
@@ -573,18 +591,26 @@ function renderReactApp() {
 
     // Also ensure window has the analytics mock
     if (typeof window !== 'undefined') {
-      if (!window.__EDX_ANALYTICS_MOCK__) {
-        window.__EDX_ANALYTICS_MOCK__ = {
+      const analyticsMock = {
+        sendTrackEvent: mockSendTrackEvent,
+        sendTrackingLogEvent: mockSendTrackingLogEvent,
+        default: {
           sendTrackEvent: mockSendTrackEvent,
           sendTrackingLogEvent: mockSendTrackingLogEvent,
-          default: {
-            sendTrackEvent: mockSendTrackEvent,
-            sendTrackingLogEvent: mockSendTrackingLogEvent,
-          }
-        };
-      }
+        }
+      };
+
+      window.__EDX_ANALYTICS_MOCK__ = analyticsMock;
       window.sendTrackEvent = mockSendTrackEvent;
       window.sendTrackingLogEvent = mockSendTrackingLogEvent;
+
+      // CRITICAL: Also patch any global analytics that paragon might access
+      // Some code might access window.analytics or global.analytics
+      window.analytics = analyticsMock;
+      if (typeof global !== 'undefined') {
+        global.analytics = analyticsMock;
+        global.sendTrackEvent = mockSendTrackEvent;
+      }
     }
 
     console.log('[JWT Auth] Pre-render: Analytics patching complete');
