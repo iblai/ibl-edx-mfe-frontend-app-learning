@@ -88,6 +88,24 @@ const ProgressTab = () => {
   // PHASE 3, STEP 8: useWindowSize from paragon
   // This might cause sendTrackEvent errors if paragon's analytics isn't mocked
   // Use a defensive approach: try useWindowSize, but fallback to window.innerWidth
+  // CRITICAL: Patch analytics RIGHT BEFORE calling useWindowSize, as paragon hooks may use it
+  React.useEffect(() => {
+    // Emergency patch for analytics if it's still undefined
+    try {
+      const analyticsModule = require('@edx/frontend-platform/analytics');
+      if (analyticsModule) {
+        if (!analyticsModule.sendTrackEvent || typeof analyticsModule.sendTrackEvent !== 'function') {
+          analyticsModule.sendTrackEvent = function() { return Promise.resolve(); };
+        }
+        if (analyticsModule.default && (!analyticsModule.default.sendTrackEvent || typeof analyticsModule.default.sendTrackEvent !== 'function')) {
+          analyticsModule.default.sendTrackEvent = function() { return Promise.resolve(); };
+        }
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }, []);
+
   let windowWidth;
   try {
     const windowSize = useWindowSize();

@@ -48,6 +48,86 @@ const createAnalyticsProxy = () => {
   });
 };
 
+// CRITICAL: Patch analytics BEFORE any imports that might use it
+// This must happen at the very top of the file, before React or any components load
+// Paragon components (like useTrackColorSchemeChoice) may import analytics during module initialization
+
+// Global patch function that can be called multiple times
+const patchAnalyticsGlobally = () => {
+  try {
+    // Strategy 1: Patch require.cache if available (most reliable for CommonJS)
+    if (typeof require !== 'undefined' && require.cache) {
+      Object.keys(require.cache).forEach((key) => {
+        if (key.includes('frontend-platform') && key.includes('analytics')) {
+          try {
+            const cachedModule = require.cache[key];
+            if (cachedModule && cachedModule.exports) {
+              // Patch named exports
+              if (!cachedModule.exports.sendTrackEvent || typeof cachedModule.exports.sendTrackEvent !== 'function') {
+                cachedModule.exports.sendTrackEvent = mockSendTrackEvent;
+              }
+              if (!cachedModule.exports.sendTrackingLogEvent || typeof cachedModule.exports.sendTrackingLogEvent !== 'function') {
+                cachedModule.exports.sendTrackingLogEvent = mockSendTrackingLogEvent;
+              }
+              // Patch default export
+              if (cachedModule.exports.default) {
+                if (!cachedModule.exports.default.sendTrackEvent || typeof cachedModule.exports.default.sendTrackEvent !== 'function') {
+                  cachedModule.exports.default.sendTrackEvent = mockSendTrackEvent;
+                }
+                if (!cachedModule.exports.default.sendTrackingLogEvent || typeof cachedModule.exports.default.sendTrackingLogEvent !== 'function') {
+                  cachedModule.exports.default.sendTrackingLogEvent = mockSendTrackingLogEvent;
+                }
+              } else {
+                // If no default export, create one
+                cachedModule.exports.default = {
+                  sendTrackEvent: mockSendTrackEvent,
+                  sendTrackingLogEvent: mockSendTrackingLogEvent,
+                };
+              }
+            }
+          } catch (e) {
+            // Ignore errors for individual modules
+          }
+        }
+      });
+    }
+  } catch (e) {
+    // Ignore if require.cache is not available
+  }
+
+  // Strategy 2: Try to require and patch directly
+  try {
+    const analyticsModule = require('@edx/frontend-platform/analytics');
+    if (analyticsModule) {
+      if (!analyticsModule.sendTrackEvent || typeof analyticsModule.sendTrackEvent !== 'function') {
+        analyticsModule.sendTrackEvent = mockSendTrackEvent;
+      }
+      if (!analyticsModule.sendTrackingLogEvent || typeof analyticsModule.sendTrackingLogEvent !== 'function') {
+        analyticsModule.sendTrackingLogEvent = mockSendTrackingLogEvent;
+      }
+      if (analyticsModule.default) {
+        if (!analyticsModule.default.sendTrackEvent || typeof analyticsModule.default.sendTrackEvent !== 'function') {
+          analyticsModule.default.sendTrackEvent = mockSendTrackEvent;
+        }
+        if (!analyticsModule.default.sendTrackingLogEvent || typeof analyticsModule.default.sendTrackingLogEvent !== 'function') {
+          analyticsModule.default.sendTrackingLogEvent = mockSendTrackingLogEvent;
+        }
+      }
+    }
+  } catch (e) {
+    // Module might not be available yet - that's okay
+  }
+
+  // Strategy 3: Set global window properties as backup
+  if (typeof window !== 'undefined') {
+    window.sendTrackEvent = mockSendTrackEvent;
+    window.sendTrackingLogEvent = mockSendTrackingLogEvent;
+  }
+};
+
+// Patch immediately at import time
+patchAnalyticsGlobally();
+
 // Try to mock the analytics module at import time
 try {
   const analyticsModule = require('@edx/frontend-platform/analytics');
@@ -70,45 +150,18 @@ try {
   console.warn('[JWT Auth] Could not mock analytics module at import time:', e.message);
 }
 
-// Also patch at runtime after modules load (for cases where webpack alias doesn't work)
-// Use multiple strategies to ensure analytics is mocked
-if (typeof window !== 'undefined') {
-  // Strategy 1: Patch immediately
-  const patchAnalytics = () => {
-    try {
-      // Try to require and patch the module
-      const analyticsModule = require('@edx/frontend-platform/analytics');
-      if (analyticsModule) {
-        if (!analyticsModule.sendTrackEvent || typeof analyticsModule.sendTrackEvent !== 'function') {
-          analyticsModule.sendTrackEvent = mockSendTrackEvent;
-          console.log('[JWT Auth] Mocked sendTrackEvent in analytics module (runtime)');
-        }
-        if (!analyticsModule.sendTrackingLogEvent || typeof analyticsModule.sendTrackingLogEvent !== 'function') {
-          analyticsModule.sendTrackingLogEvent = mockSendTrackingLogEvent;
-          console.log('[JWT Auth] Mocked sendTrackingLogEvent in analytics module (runtime)');
-        }
-        // Also patch default export if it exists
-        if (analyticsModule.default) {
-          if (!analyticsModule.default.sendTrackEvent || typeof analyticsModule.default.sendTrackEvent !== 'function') {
-            analyticsModule.default.sendTrackEvent = mockSendTrackEvent;
-          }
-          if (!analyticsModule.default.sendTrackingLogEvent || typeof analyticsModule.default.sendTrackingLogEvent !== 'function') {
-            analyticsModule.default.sendTrackingLogEvent = mockSendTrackingLogEvent;
-          }
-        }
-      }
-    } catch (e) {
-      // Module might not be available - that's okay, webpack alias should handle it
-    }
-  };
+  // Also patch at runtime after modules load (for cases where webpack alias doesn't work)
+  // Use multiple strategies to ensure analytics is mocked
+  if (typeof window !== 'undefined') {
+    // Use the global patch function
+    // Patch immediately
+    patchAnalyticsGlobally();
 
-  // Patch immediately
-  patchAnalytics();
-
-  // Strategy 2: Patch after a short delay (for modules that load asynchronously)
-  setTimeout(patchAnalytics, 0);
-  setTimeout(patchAnalytics, 100);
-  setTimeout(patchAnalytics, 500);
+    // Strategy 2: Patch after a short delay (for modules that load asynchronously)
+    setTimeout(patchAnalyticsGlobally, 0);
+    setTimeout(patchAnalyticsGlobally, 100);
+    setTimeout(patchAnalyticsGlobally, 500);
+    setTimeout(patchAnalyticsGlobally, 1000);
 
   // Strategy 3: Intercept require.cache if available (CommonJS)
   if (typeof require !== 'undefined' && require.cache) {
@@ -443,50 +496,10 @@ function renderReactApp() {
 
     // CRITICAL: Patch analytics module RIGHT BEFORE React renders
     // This ensures sendTrackEvent is available when components try to use it
-    try {
-      const analyticsModule = require('@edx/frontend-platform/analytics');
-      if (analyticsModule) {
-        if (!analyticsModule.sendTrackEvent || typeof analyticsModule.sendTrackEvent !== 'function') {
-          analyticsModule.sendTrackEvent = mockSendTrackEvent;
-          console.log('[JWT Auth] Pre-render: Patched sendTrackEvent');
-        }
-        if (!analyticsModule.sendTrackingLogEvent || typeof analyticsModule.sendTrackingLogEvent !== 'function') {
-          analyticsModule.sendTrackingLogEvent = mockSendTrackingLogEvent;
-          console.log('[JWT Auth] Pre-render: Patched sendTrackingLogEvent');
-        }
-        // Also ensure default export is patched
-        if (analyticsModule.default) {
-          if (!analyticsModule.default.sendTrackEvent || typeof analyticsModule.default.sendTrackEvent !== 'function') {
-            analyticsModule.default.sendTrackEvent = mockSendTrackEvent;
-          }
-          if (!analyticsModule.default.sendTrackingLogEvent || typeof analyticsModule.default.sendTrackingLogEvent !== 'function') {
-            analyticsModule.default.sendTrackingLogEvent = mockSendTrackingLogEvent;
-          }
-        }
-      } else {
-        // Module is undefined - try to replace it with proxy in require.cache
-        console.warn('[JWT Auth] Pre-render: Analytics module is undefined, attempting to replace in require.cache');
-        if (typeof require !== 'undefined' && require.cache) {
-          Object.keys(require.cache).forEach((key) => {
-            if (key.includes('frontend-platform') && key.includes('analytics')) {
-              try {
-                require.cache[key].exports = createAnalyticsProxy();
-                console.log('[JWT Auth] Pre-render: Replaced analytics module in require.cache with proxy');
-              } catch (e) {
-                console.warn('[JWT Auth] Pre-render: Could not replace in require.cache:', e.message);
-              }
-            }
-          });
-        }
-      }
-    } catch (e) {
-      console.warn('[JWT Auth] Pre-render: Could not patch analytics module:', e.message);
-      // Last resort: try to intercept require calls
-      if (typeof require !== 'undefined') {
-        const originalRequire = require;
-        // Note: We can't actually replace require, but we've done our best
-      }
-    }
+    // Use the global patch function for consistency
+    console.log('[JWT Auth] Pre-render: Patching analytics globally');
+    patchAnalyticsGlobally();
+    console.log('[JWT Auth] Pre-render: Analytics patching complete');
 
     // Ensure auth interceptor is set up for JWT token support
     if (!interceptorCleanup) {

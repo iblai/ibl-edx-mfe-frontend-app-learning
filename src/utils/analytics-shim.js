@@ -4,6 +4,8 @@
  * This prevents "Cannot read properties of undefined (reading 'sendTrackEvent')" errors
  *
  * This module replaces @edx/frontend-platform/analytics via webpack alias
+ *
+ * CRITICAL: This must be loaded BEFORE any paragon components that use analytics
  */
 
 // Create mock functions that are safe to call
@@ -18,9 +20,63 @@ const mockSendTrackingLogEvent = function() {
   return Promise.resolve();
 };
 
+// Create a comprehensive analytics object that handles all access patterns
+// This matches the structure that paragon expects
+const analyticsObject = {
+  sendTrackEvent: mockSendTrackEvent,
+  sendTrackingLogEvent: mockSendTrackingLogEvent,
+};
+
+// Use a Proxy to catch any property access that might fail
+// This is critical for paragon components that might access analytics in unexpected ways
+const analyticsProxy = new Proxy(analyticsObject, {
+  get: function(target, prop) {
+    // If property exists, return it
+    if (prop in target) {
+      return target[prop];
+    }
+    // For any other property access, return a safe function
+    if (typeof prop === 'string' && prop.toLowerCase().includes('track')) {
+      return mockSendTrackEvent;
+    }
+    // For 'default' property, return the proxy itself (for default exports)
+    if (prop === 'default') {
+      return analyticsProxy;
+    }
+    // Return undefined for other properties (safer than throwing)
+    return undefined;
+  },
+  has: function(target, prop) {
+    // Always return true for common analytics properties
+    return prop in target ||
+           prop === 'sendTrackEvent' ||
+           prop === 'sendTrackingLogEvent' ||
+           prop === 'default';
+  }
+});
+
 // Export mocks - match the structure of @edx/frontend-platform/analytics
+// Support both named exports and default export
 export const sendTrackEvent = mockSendTrackEvent;
 export const sendTrackingLogEvent = mockSendTrackingLogEvent;
+
+// Also export as default to match how some modules might import it
+// Paragon might import as: import analytics from '@edx/frontend-platform/analytics'
+// Then access: analytics.sendTrackEvent
+export default analyticsProxy;
+
+// Also set on window for global access (backup for runtime patching)
+if (typeof window !== 'undefined') {
+  window.sendTrackEvent = mockSendTrackEvent;
+  window.sendTrackingLogEvent = mockSendTrackingLogEvent;
+  window.__EDX_ANALYTICS__ = analyticsProxy;
+
+  // Log that shim is loaded (only once)
+  if (!window.__ANALYTICS_SHIM_LOADED__) {
+    console.log('[JWT Auth] Analytics shim loaded - sendTrackEvent and sendTrackingLogEvent available');
+    window.__ANALYTICS_SHIM_LOADED__ = true;
+  }
+}
 
 // Also export as default for cases where module is imported as default
 const analyticsModule = {
