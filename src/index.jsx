@@ -253,24 +253,10 @@ class SimpleErrorBoundary extends React.Component {
       this.errorLogged = true;
     }
 
-    // CRITICAL: If this is an analytics error, DON'T retry - it won't help
-    // The error is from paragon's bundled code which already has analytics undefined
-    // Only a webpack rebuild with the alias will fix this
     const errorMessage = error?.message || String(error);
-    const isAnalyticsError = errorMessage.includes('sendTrackEvent') ||
-                            (errorMessage.includes('Cannot read properties of undefined') &&
-                             errorMessage.includes('analytics'));
+    const isAnalyticsError = errorMessage.includes('sendTrackEvent');
 
-    if (isAnalyticsError) {
-      console.error('[JWT Auth] Analytics error detected - this requires webpack rebuild to fix');
-      console.error('[JWT Auth] Paragon components are bundled with undefined analytics - runtime patching cannot fix this');
-      // Don't retry - it will just loop forever
-      // Set errorCount to max to prevent retries
-      this.setState({ errorCount: 999 });
-      return;
-    }
-
-    // Prevent infinite loops - reset error state after a delay (only for non-analytics errors)
+    // Prevent infinite loops - reset error state after a delay
     if (this.state.errorCount < 3) {
       setTimeout(() => {
         this.setState({ hasError: false, error: null, errorCount: this.state.errorCount + 1 });
@@ -282,48 +268,20 @@ class SimpleErrorBoundary extends React.Component {
   render() {
     // If we've had too many errors, show fallback instead of rendering children
     if (this.state.errorCount >= 3) {
-      const errorMessage = this.state.error?.message || 'Unknown error';
-      const isAnalyticsError = errorMessage.includes('sendTrackEvent');
-
       return (
         <div style={{ padding: '20px', textAlign: 'center' }}>
           <div style={{ fontSize: '18px', color: '#dc3545' }}>
             Error: Component failed to render after multiple attempts
           </div>
           <div style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
-            {isAnalyticsError ? (
-              <>
-                Analytics error detected. This requires a webpack rebuild for the analytics alias to take effect.
-                <br />
-                The webpack alias (@edx/frontend-platform/analytics → analytics-shim.js) only works after rebuild.
-              </>
-            ) : (
-              'Check console for details'
-            )}
+            Check console for details.
           </div>
         </div>
       );
     }
 
     if (this.state.hasError) {
-      // For analytics errors, show error message immediately (don't retry)
-      const errorMessage = this.state.error?.message || 'Unknown error';
-      const isAnalyticsError = errorMessage.includes('sendTrackEvent');
-
-      if (isAnalyticsError) {
-        return (
-          <div style={{ padding: '20px', textAlign: 'center' }}>
-            <div style={{ fontSize: '18px', color: '#dc3545' }}>
-              Analytics Error: sendTrackEvent
-            </div>
-            <div style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
-              Paragon components require analytics. Webpack rebuild needed for permanent fix.
-            </div>
-          </div>
-        );
-      }
-
-      // For other errors, return null to break the loop
+      // For errors, render nothing and let errorCount logic decide when to show fallback
       return null;
     }
     return this.props.children;
