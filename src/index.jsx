@@ -308,9 +308,10 @@ function renderReactApp() {
 
   logInitializationMilestone('About to render React app');
 
-  // MINIMAL RENDER MODE: Just render ProgressTab directly, no providers, no routing
+  // MINIMAL RENDER MODE: Render ProgressTabMinimal, but wait for APP_READY so analytics is configured
+  // This matches the original ibl-develop branch behavior - let initialize() configure analytics first
   if (MINIMAL_RENDER_MODE) {
-    console.log('[JWT Auth] Using MINIMAL_RENDER_MODE - rendering ProgressTabMinimal with JWT data fetching');
+    console.log('[JWT Auth] Using MINIMAL_RENDER_MODE - rendering ProgressTabMinimal after APP_READY');
     console.log('[JWT Auth] Root element:', rootElement);
 
     // Ensure auth interceptor is set up for JWT token support
@@ -325,55 +326,9 @@ function renderReactApp() {
       }
     }
 
-    // CRITICAL: Manually configure analytics before rendering, matching what initialize() does
-    // This ensures Paragon components can safely call sendTrackEvent
-    // According to @edx/frontend-platform docs, analytics must be configured with:
-    // - config (from getConfig())
-    // - loggingService (from getLoggingService())
-    // - httpClient (from getAuthenticatedHttpClient())
-    try {
-      console.log('[JWT Auth] Configuring analytics service for minimal mode');
-
-      // CRITICAL: MockAnalyticsService may check for 'jest' (testing framework) at runtime
-      // In production builds, jest is not defined, causing ReferenceError
-      // We need to explicitly define it as undefined before calling configure()
-      if (typeof global !== 'undefined') {
-        if (!('jest' in global)) {
-          global.jest = undefined;
-        }
-      }
-      if (typeof window !== 'undefined') {
-        if (!('jest' in window)) {
-          window.jest = undefined;
-        }
-      }
-
-      const config = getConfig();
-      const loggingService = getLoggingService();
-      const httpClient = getAuthenticatedHttpClient();
-
-      // Configure MockAnalyticsService (no-op implementation) so analytics is available
-      // This matches what initialize() does automatically, but we do it manually in minimal mode
-      configure(MockAnalyticsService, {
-        config,
-        loggingService,
-        httpClient,
-      });
-      console.log('[JWT Auth] Analytics service configured successfully (MockAnalyticsService)');
-    } catch (analyticsConfigError) {
-      console.error('[JWT Auth] Failed to configure analytics service in minimal mode:', analyticsConfigError);
-
-      // If it's a jest ReferenceError, the issue is that MockAnalyticsService checks for jest
-      // but jest is not defined. We can't easily fix this without modifying MockAnalyticsService.
-      // Instead, we'll skip manual configuration and let initialize() handle it when it completes.
-      // The error boundary will catch any sendTrackEvent errors and we can handle them there.
-      if (analyticsConfigError.message && analyticsConfigError.message.includes('jest')) {
-        console.warn('[JWT Auth] MockAnalyticsService requires jest to be defined. Skipping manual config - will rely on initialize() to configure analytics.');
-        // Continue anyway - initialize() should configure analytics when it completes
-      } else {
-        // Continue anyway - components might still work, or will fail gracefully
-      }
-    }
+    // NOTE: We don't manually configure analytics here anymore
+    // Instead, we wait for APP_READY which ensures initialize() has configured analytics
+    // This matches the original ibl-develop branch behavior
 
     try {
       reactRoot = createRoot(rootElement);
@@ -381,6 +336,7 @@ function renderReactApp() {
       // PHASE 1, STEP 1: Add Redux Store Provider
       // PHASE 3, STEP 7: Add IntlProvider for i18n (useIntl hook)
       // This enables useModel() hook and useIntl() hook that ProgressTab needs
+      // NOTE: Analytics is already configured by initialize() before APP_READY fired
       reactRoot.render(
         <SimpleErrorBoundary>
           <IntlProvider locale="en" messages={messages}>
@@ -588,7 +544,7 @@ subscribe(APP_READY, () => {
     }
   }
 
-  // Render React app
+  // Render React app (now analytics is configured by initialize())
   renderReactApp();
 });
 
