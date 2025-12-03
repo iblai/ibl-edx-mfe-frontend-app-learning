@@ -236,7 +236,7 @@ console.log('[JWT Auth] Initialization auth strategy', {
   isInIframe,
   hasTestToken,
   jwtAuthEnabled,
-  hasJwtTokenOrEnabled,
+  willUseJWT: isInIframe && (hasTestToken || jwtAuthEnabled),
   shouldRequireAuth,
   strategy: shouldRequireAuth
     ? 'cookie-based (require authenticated user)'
