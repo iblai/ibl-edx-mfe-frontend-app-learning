@@ -37,10 +37,22 @@ import { DECODE_ROUTES, ROUTES } from './constants';
 import PreferencesUnsubscribe from './preferences-unsubscribe';
 import PageNotFound from './generic/PageNotFound';
 
-subscribe(APP_READY, () => {
-  const root = createRoot(document.getElementById('root'));
+// Shared function to render React app - called from both APP_READY and APP_INIT_ERROR (when allowing continue)
+let reactRoot = null;
+function renderReactApp() {
+  // Prevent double rendering
+  if (reactRoot) {
+    return;
+  }
 
-  root.render(
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    console.error('[JWT Auth] Cannot render React app - root element not found');
+    return;
+  }
+
+  reactRoot = createRoot(rootElement);
+  reactRoot.render(
     <StrictMode>
       <AppProvider store={store}>
         <Helmet>
@@ -151,11 +163,43 @@ subscribe(APP_READY, () => {
       </AppProvider>
     </StrictMode>,
   );
+}
+
+subscribe(APP_READY, () => {
+  renderReactApp();
 });
 
 subscribe(APP_INIT_ERROR, (error) => {
-  const root = createRoot(document.getElementById('root'));
+  // Check if we're in JWT iframe mode (custom domain with JWT auth)
+  // If so, allow app to continue even if APP_INIT_ERROR fires
+  const isInIframe = window.self !== window.top;
+  const jwtAuthEnabled = process.env.JWT_AUTH_ENABLED === 'true' || !!process.env.JWT_TEST_TOKEN;
+  const isJWTIframeMode = isInIframe && jwtAuthEnabled;
 
+  if (isJWTIframeMode) {
+    // Check for JWT token (test token or from window)
+    const hasJwtToken = !!process.env.JWT_TEST_TOKEN || !!window.__JWT_TOKEN__;
+
+    if (hasJwtToken) {
+      console.warn('[JWT Auth] APP_INIT_ERROR in JWT iframe mode - allowing app to continue', {
+        hasJwtToken: true,
+        errorMessage: error?.message,
+      });
+
+      // Force render React app after a delay to allow APP_READY to fire if it will
+      // If APP_READY doesn't fire, we'll render anyway
+      setTimeout(() => {
+        if (!reactRoot) {
+          console.warn('[JWT Auth] APP_READY did not fire - forcing React render');
+          renderReactApp();
+        }
+      }, 500);
+      return;
+    }
+  }
+
+  // Standard error handling - show error page
+  const root = createRoot(document.getElementById('root'));
   root.render(
     <StrictMode>
       <ErrorPage message={error.message} />
