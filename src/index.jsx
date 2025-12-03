@@ -617,10 +617,10 @@ subscribe(APP_INIT_ERROR, (error) => {
       // APP_READY might not fire after APP_INIT_ERROR, so we render directly
       setTimeout(() => {
         if (!window.__APP_READY_FIRED__) {
-          console.warn('[JWT Auth] APP_READY did not fire after APP_INIT_ERROR - forcing React render');
+          console.warn('[JWT Auth] APP_READY did not fire after APP_INIT_ERROR - forcing React render (analytics may not be configured)');
           renderReactApp();
         }
-      }, 100);
+      }, MINIMAL_RENDER_MODE ? 1000 : 100); // Longer delay in minimal mode to give APP_READY more time
       return;
     }
   }
