@@ -436,77 +436,77 @@ class SimpleErrorBoundary extends React.Component {
       this.errorLogged = true;
     }
 
-    // CRITICAL: If this is an analytics error, patch analytics aggressively and retry
+    // CRITICAL: If this is an analytics error, DON'T retry - it won't help
+    // The error is from paragon's bundled code which already has analytics undefined
+    // Only a webpack rebuild with the alias will fix this
     const errorMessage = error?.message || String(error);
     const isAnalyticsError = errorMessage.includes('sendTrackEvent') ||
-                            errorMessage.includes('Cannot read properties of undefined');
+                            (errorMessage.includes('Cannot read properties of undefined') &&
+                             errorMessage.includes('analytics'));
 
     if (isAnalyticsError) {
-      console.log('[JWT Auth] Detected analytics error, patching aggressively...');
-
-      // Aggressively patch analytics
-      patchAnalyticsGlobally();
-
-      // Also patch require.cache
-      if (typeof require !== 'undefined' && require.cache) {
-        Object.keys(require.cache).forEach((key) => {
-          if (key.includes('analytics') || key.includes('track') || key.includes('paragon')) {
-            try {
-              const cachedModule = require.cache[key];
-              if (cachedModule && cachedModule.exports) {
-                if (!cachedModule.exports.sendTrackEvent) {
-                  cachedModule.exports.sendTrackEvent = mockSendTrackEvent;
-                }
-                if (cachedModule.exports.default && !cachedModule.exports.default.sendTrackEvent) {
-                  cachedModule.exports.default.sendTrackEvent = mockSendTrackEvent;
-                }
-              }
-            } catch (e) {
-              // Ignore
-            }
-          }
-        });
-      }
-
-      // Patch window
-      if (typeof window !== 'undefined') {
-        window.sendTrackEvent = mockSendTrackEvent;
-        window.sendTrackingLogEvent = mockSendTrackingLogEvent;
-      }
-
-      console.log('[JWT Auth] Analytics patched, will retry render');
+      console.error('[JWT Auth] Analytics error detected - this requires webpack rebuild to fix');
+      console.error('[JWT Auth] Paragon components are bundled with undefined analytics - runtime patching cannot fix this');
+      // Don't retry - it will just loop forever
+      // Set errorCount to max to prevent retries
+      this.setState({ errorCount: 999 });
+      return;
     }
 
-    // Prevent infinite loops - reset error state after a delay
+    // Prevent infinite loops - reset error state after a delay (only for non-analytics errors)
     if (this.state.errorCount < 3) {
       setTimeout(() => {
         this.setState({ hasError: false, error: null, errorCount: this.state.errorCount + 1 });
         this.errorLogged = false;
-      }, isAnalyticsError ? 500 : 100); // Longer delay for analytics errors to allow patching to take effect
+      }, 100);
     }
   }
 
   render() {
     // If we've had too many errors, show fallback instead of rendering children
     if (this.state.errorCount >= 3) {
+      const errorMessage = this.state.error?.message || 'Unknown error';
+      const isAnalyticsError = errorMessage.includes('sendTrackEvent');
+
       return (
         <div style={{ padding: '20px', textAlign: 'center' }}>
           <div style={{ fontSize: '18px', color: '#dc3545' }}>
             Error: Component failed to render after multiple attempts
           </div>
           <div style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
-            Check console for details
+            {isAnalyticsError ? (
+              <>
+                Analytics error detected. This requires a webpack rebuild for the analytics alias to take effect.
+                <br />
+                The webpack alias (@edx/frontend-platform/analytics → analytics-shim.js) only works after rebuild.
+              </>
+            ) : (
+              'Check console for details'
+            )}
           </div>
         </div>
       );
     }
 
     if (this.state.hasError) {
-      // Log warning only once
-      if (!this.errorLogged) {
-        console.warn('[JWT Auth] ErrorBoundary caught error but rendering anyway:', this.state.error);
+      // For analytics errors, show error message immediately (don't retry)
+      const errorMessage = this.state.error?.message || 'Unknown error';
+      const isAnalyticsError = errorMessage.includes('sendTrackEvent');
+
+      if (isAnalyticsError) {
+        return (
+          <div style={{ padding: '20px', textAlign: 'center' }}>
+            <div style={{ fontSize: '18px', color: '#dc3545' }}>
+              Analytics Error: sendTrackEvent
+            </div>
+            <div style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
+              Paragon components require analytics. Webpack rebuild needed for permanent fix.
+            </div>
+          </div>
+        );
       }
-      // Return null to break the loop, or show a fallback
+
+      // For other errors, return null to break the loop
       return null;
     }
     return this.props.children;
