@@ -133,21 +133,36 @@ export function setupAuthInterceptor() {
           config.skipJwtTokenRefresh = true;
 
           // Add JWT token to Authorization header
-          // Format: Authorization: JWT <token>
-          // Set on both common and method-specific to ensure Axios uses it
+          // Format: Authorization: JWT <token> (exactly like Postman)
+          // CRITICAL: Set directly on config.headers.Authorization first (most direct way)
+          // Then also set on common and method-specific for Axios header merging
           const authHeaderValue = `JWT ${jwtToken}`;
+
+          // PRIMARY: Set directly on headers (this is what Axios will use)
           config.headers.Authorization = authHeaderValue;
-          // Also set on common headers (Axios uses this for all methods)
+
+          // SECONDARY: Also set on common headers (Axios merges these for all methods)
           if (!config.headers.common) {
             config.headers.common = {};
           }
           config.headers.common.Authorization = authHeaderValue;
-          // Also set on method-specific header (for the specific HTTP method)
+
+          // TERTIARY: Also set on method-specific header (Axios merges these per method)
           const method = (config.method || 'get').toLowerCase();
           if (!config.headers[method]) {
             config.headers[method] = {};
           }
           config.headers[method].Authorization = authHeaderValue;
+
+          // CRITICAL: Ensure the header is a string, not an object
+          // Axios expects headers to be strings, not objects
+          if (typeof config.headers.Authorization !== 'string') {
+            console.error('[JWT Auth] ERROR: Authorization header is not a string!', {
+              type: typeof config.headers.Authorization,
+              value: config.headers.Authorization,
+            });
+            config.headers.Authorization = authHeaderValue; // Force it to be a string
+          }
 
           // For cross-origin requests, disable credentials (cookies)
           // This ensures we're using JWT instead of cookies
@@ -159,6 +174,9 @@ export function setupAuthInterceptor() {
           const hasAuthHeader = authHeader.startsWith('JWT ');
           const usingCookies = config.withCredentials === true;
 
+          // Verify header format matches Postman exactly: "JWT <token>"
+          const headerFormatCorrect = typeof authHeader === 'string' && authHeader.startsWith('JWT ') && authHeader.length > 4;
+
           console.log('[JWT Auth] ✅ REQUEST USING JWT TOKEN', {
             url,
             method: config.method,
@@ -167,9 +185,12 @@ export function setupAuthInterceptor() {
             tokenLength: jwtToken ? jwtToken.length : 0,
             tokenPreview: jwtToken ? jwtToken.substring(0, 50) + '...' : null,
             authorizationHeader: hasAuthHeader ? `${authHeader.substring(0, 50)}...` : 'MISSING',
+            headerFormat: headerFormatCorrect ? '✅ CORRECT (matches Postman: "JWT <token>")' : '❌ INCORRECT FORMAT',
+            headerType: typeof authHeader,
             withCredentials: config.withCredentials,
             usingCookies: usingCookies,
-            confirmation: hasAuthHeader && !usingCookies ? '✅ JWT AUTH CONFIRMED' : '❌ JWT AUTH NOT WORKING',
+            confirmation: hasAuthHeader && !usingCookies && headerFormatCorrect ? '✅ JWT AUTH CONFIRMED' : '❌ JWT AUTH NOT WORKING',
+            note: 'Check Network tab → Request Headers → Authorization to verify it was sent',
           });
           safeLogInfo('[JWT Auth] Request interceptor - JWT mode', {
             url,
