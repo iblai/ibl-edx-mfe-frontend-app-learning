@@ -44,7 +44,7 @@ import PageNotFound from './generic/PageNotFound';
 // Verify we're using local frontend-platform (not npm package)
 // This console log confirms webpack aliases are working and resolving to /openedx/frontend-platform/dist
 if (typeof window !== 'undefined') {
-  console.log('[Frontend-Platform Verification]', {
+  console.log('[JWT Auth] Frontend-Platform Verification', {
     source: 'LOCAL BUILD',
     path: '/openedx/frontend-platform/dist',
     note: 'Using local frontend-platform from ibl-edx-mfe-frontend-platform (branch: ibl-develop)',

@@ -20,11 +20,17 @@ const mockSendTrackingLogEvent = function() {
   return Promise.resolve();
 };
 
+const mockSendPageEvent = function() {
+  // Silent no-op
+  return Promise.resolve();
+};
+
 // Create a comprehensive analytics object that handles all access patterns
 // This matches the structure that paragon expects
 const analyticsObject = {
   sendTrackEvent: mockSendTrackEvent,
   sendTrackingLogEvent: mockSendTrackingLogEvent,
+  sendPageEvent: mockSendPageEvent,
 };
 
 // Use a Proxy to catch any property access that might fail
@@ -51,6 +57,7 @@ const analyticsProxy = new Proxy(analyticsObject, {
     return prop in target ||
            prop === 'sendTrackEvent' ||
            prop === 'sendTrackingLogEvent' ||
+           prop === 'sendPageEvent' ||
            prop === 'default';
   }
 });
@@ -59,38 +66,43 @@ const analyticsProxy = new Proxy(analyticsObject, {
 // Support both named exports and default export
 export const sendTrackEvent = mockSendTrackEvent;
 export const sendTrackingLogEvent = mockSendTrackingLogEvent;
+export const sendPageEvent = mockSendPageEvent;
 
 // Also export as default to match how some modules might import it
 // Paragon might import as: import analytics from '@edx/frontend-platform/analytics'
 // Then access: analytics.sendTrackEvent
 export default analyticsProxy;
 
-// Also set on window for global access (backup for runtime patching)
-if (typeof window !== 'undefined') {
-  window.sendTrackEvent = mockSendTrackEvent;
-  window.sendTrackingLogEvent = mockSendTrackingLogEvent;
-  window.__EDX_ANALYTICS__ = analyticsProxy;
+  // Also set on window for global access (backup for runtime patching)
+  if (typeof window !== 'undefined') {
+    window.sendTrackEvent = mockSendTrackEvent;
+    window.sendTrackingLogEvent = mockSendTrackingLogEvent;
+    window.sendPageEvent = mockSendPageEvent;
+    window.__EDX_ANALYTICS__ = analyticsProxy;
 
-  // Also provide a global `analytics` object for libraries that expect Segment-style globals.
-  // Some code paths (including Paragon/theme hooks) may call analytics.sendTrackEvent(...)
-  // instead of importing from @edx/frontend-platform/analytics directly.
-  if (!window.analytics) {
-    window.analytics = {};
-  }
-  if (typeof window.analytics.sendTrackEvent !== 'function') {
-    window.analytics.sendTrackEvent = mockSendTrackEvent;
-  }
-  // For safety, also provide a generic `track` method that some analytics clients expect.
-  if (typeof window.analytics.track !== 'function') {
-    window.analytics.track = function () {
-      return Promise.resolve();
-    };
-  }
+    // Also provide a global `analytics` object for libraries that expect Segment-style globals.
+    // Some code paths (including Paragon/theme hooks) may call analytics.sendTrackEvent(...)
+    // instead of importing from @edx/frontend-platform/analytics directly.
+    if (!window.analytics) {
+      window.analytics = {};
+    }
+    if (typeof window.analytics.sendTrackEvent !== 'function') {
+      window.analytics.sendTrackEvent = mockSendTrackEvent;
+    }
+    if (typeof window.analytics.sendPageEvent !== 'function') {
+      window.analytics.sendPageEvent = mockSendPageEvent;
+    }
+    // For safety, also provide a generic `track` method that some analytics clients expect.
+    if (typeof window.analytics.track !== 'function') {
+      window.analytics.track = function () {
+        return Promise.resolve();
+      };
+    }
 
-  // Log that shim is loaded (only once)
-  if (!window.__ANALYTICS_SHIM_LOADED__) {
-    console.log('[JWT Auth] Analytics shim loaded - sendTrackEvent and sendTrackingLogEvent available');
-    window.__ANALYTICS_SHIM_LOADED__ = true;
+    // Log that shim is loaded (only once)
+    if (!window.__ANALYTICS_SHIM_LOADED__) {
+      console.log('[JWT Auth] Analytics shim loaded - sendTrackEvent, sendTrackingLogEvent, and sendPageEvent available');
+      window.__ANALYTICS_SHIM_LOADED__ = true;
+    }
   }
-}
 
