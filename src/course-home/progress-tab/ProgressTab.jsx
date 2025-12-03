@@ -1,5 +1,5 @@
 import React from 'react';
-import { useWindowSize } from '@openedx/paragon';
+// Removed useWindowSize import - using window.innerWidth directly to avoid paragon analytics dependency
 import { useContextId } from '../../data/hooks';
 import ProgressTabCertificateStatusSidePanelSlot from '../../plugin-slots/ProgressTabCertificateStatusSidePanelSlot';
 
@@ -86,42 +86,30 @@ const ProgressTab = () => {
   const { disableProgressGraph } = useModel('progress', courseId);
 
   // PHASE 3, STEP 8: useWindowSize from paragon
-  // This might cause sendTrackEvent errors if paragon's analytics isn't mocked
-  // Use a defensive approach: try useWindowSize, but fallback to window.innerWidth
-  // CRITICAL: Patch analytics RIGHT BEFORE calling useWindowSize, as paragon hooks may use it
-  React.useEffect(() => {
-    // Emergency patch for analytics if it's still undefined
-    try {
-      const analyticsModule = require('@edx/frontend-platform/analytics');
-      if (analyticsModule) {
-        if (!analyticsModule.sendTrackEvent || typeof analyticsModule.sendTrackEvent !== 'function') {
-          analyticsModule.sendTrackEvent = function() { return Promise.resolve(); };
-        }
-        if (analyticsModule.default && (!analyticsModule.default.sendTrackEvent || typeof analyticsModule.default.sendTrackEvent !== 'function')) {
-          analyticsModule.default.sendTrackEvent = function() { return Promise.resolve(); };
-        }
-      }
-    } catch (e) {
-      // Ignore
+  // CRITICAL: Paragon's useWindowSize() uses analytics internally via useTrackColorSchemeChoice
+  // Since analytics isn't properly initialized in minimal mode, we bypass useWindowSize entirely
+  // and use window.innerWidth directly to avoid the sendTrackEvent error
+
+  // Use window.innerWidth directly instead of useWindowSize() to avoid paragon analytics dependency
+  const [windowWidth, setWindowWidth] = React.useState(() => {
+    // Initialize with current window width or default
+    if (typeof window !== 'undefined' && window.innerWidth) {
+      return window.innerWidth;
     }
+    return 1200; // Default to desktop width
+  });
+
+  // Update window width on resize (simple implementation without paragon)
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth || 1200);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  let windowWidth;
-  try {
-    const windowSize = useWindowSize();
-    windowWidth = windowSize?.width;
-  } catch (error) {
-    console.warn('[JWT Auth] useWindowSize() error, using fallback:', error);
-    // Fallback: use window.innerWidth if available
-    windowWidth = typeof window !== 'undefined' ? window.innerWidth : undefined;
-  }
-
-  // If windowWidth is still undefined, use a default (desktop width)
-  // This prevents the component from returning null and allows rendering
-  if (windowWidth === undefined) {
-    console.warn('[JWT Auth] windowWidth is undefined, using default 1200px');
-    windowWidth = 1200; // Default to desktop width
-  }
 
   if (windowWidth === undefined) {
     // Bail because we don't want to load <CertificateStatus/> twice, emitting 'visited' events both times.
