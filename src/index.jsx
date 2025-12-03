@@ -333,6 +333,21 @@ function renderReactApp() {
     // - httpClient (from getAuthenticatedHttpClient())
     try {
       console.log('[JWT Auth] Configuring analytics service for minimal mode');
+
+      // CRITICAL: MockAnalyticsService may check for 'jest' (testing framework) at runtime
+      // In production builds, jest is not defined, causing ReferenceError
+      // We need to explicitly define it as undefined before calling configure()
+      if (typeof global !== 'undefined') {
+        if (!('jest' in global)) {
+          global.jest = undefined;
+        }
+      }
+      if (typeof window !== 'undefined') {
+        if (!('jest' in window)) {
+          window.jest = undefined;
+        }
+      }
+
       const config = getConfig();
       const loggingService = getLoggingService();
       const httpClient = getAuthenticatedHttpClient();
@@ -347,7 +362,17 @@ function renderReactApp() {
       console.log('[JWT Auth] Analytics service configured successfully (MockAnalyticsService)');
     } catch (analyticsConfigError) {
       console.error('[JWT Auth] Failed to configure analytics service in minimal mode:', analyticsConfigError);
-      // Continue anyway - components might still work, or will fail gracefully
+
+      // If it's a jest ReferenceError, the issue is that MockAnalyticsService checks for jest
+      // but jest is not defined. We can't easily fix this without modifying MockAnalyticsService.
+      // Instead, we'll skip manual configuration and let initialize() handle it when it completes.
+      // The error boundary will catch any sendTrackEvent errors and we can handle them there.
+      if (analyticsConfigError.message && analyticsConfigError.message.includes('jest')) {
+        console.warn('[JWT Auth] MockAnalyticsService requires jest to be defined. Skipping manual config - will rely on initialize() to configure analytics.');
+        // Continue anyway - initialize() should configure analytics when it completes
+      } else {
+        // Continue anyway - components might still work, or will fail gracefully
+      }
     }
 
     try {
