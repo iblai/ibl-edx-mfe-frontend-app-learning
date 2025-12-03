@@ -3,6 +3,9 @@ import {
   mergeConfig,
   getConfig,
 } from '@edx/frontend-platform';
+import { configure, MockAnalyticsService } from '@edx/frontend-platform/analytics';
+import { getLoggingService } from '@edx/frontend-platform/logging';
+import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { AppProvider, ErrorPage, PageWrap } from '@edx/frontend-platform/react';
 import { IntlProvider } from '@edx/frontend-platform/i18n';
 import React, { StrictMode } from 'react';
@@ -320,6 +323,31 @@ function renderReactApp() {
         console.error('[JWT Auth] Failed to setup auth interceptor in minimal mode:', interceptorError);
         // Continue anyway - ProgressTabMinimal will handle errors
       }
+    }
+
+    // CRITICAL: Manually configure analytics before rendering, matching what initialize() does
+    // This ensures Paragon components can safely call sendTrackEvent
+    // According to @edx/frontend-platform docs, analytics must be configured with:
+    // - config (from getConfig())
+    // - loggingService (from getLoggingService())
+    // - httpClient (from getAuthenticatedHttpClient())
+    try {
+      console.log('[JWT Auth] Configuring analytics service for minimal mode');
+      const config = getConfig();
+      const loggingService = getLoggingService();
+      const httpClient = getAuthenticatedHttpClient();
+
+      // Configure MockAnalyticsService (no-op implementation) so analytics is available
+      // This matches what initialize() does automatically, but we do it manually in minimal mode
+      configure(MockAnalyticsService, {
+        config,
+        loggingService,
+        httpClient,
+      });
+      console.log('[JWT Auth] Analytics service configured successfully (MockAnalyticsService)');
+    } catch (analyticsConfigError) {
+      console.error('[JWT Auth] Failed to configure analytics service in minimal mode:', analyticsConfigError);
+      // Continue anyway - components might still work, or will fail gracefully
     }
 
     try {
