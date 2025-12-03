@@ -40,6 +40,8 @@ import DecodePageRoute from './decode-page-route';
 import { DECODE_ROUTES, ROUTES } from './constants';
 import PreferencesUnsubscribe from './preferences-unsubscribe';
 import PageNotFound from './generic/PageNotFound';
+import { AuthenticatedHttpClientProvider } from './contexts/AuthenticatedHttpClientContext';
+import { setupAuthInterceptor } from './utils/setupAuthInterceptor';
 
 // Verify we're using local frontend-platform (not npm package)
 // This console log confirms webpack aliases are working and resolving to /openedx/frontend-platform/dist
@@ -67,6 +69,11 @@ function renderReactApp() {
   }
 
   reactRoot = createRoot(rootElement);
+
+  // Set up auth interceptor BEFORE rendering (so it's ready for API calls)
+  console.log('[JWT Auth] Setting up auth interceptor before rendering');
+  const interceptorCleanup = setupAuthInterceptor();
+
   reactRoot.render(
     <StrictMode>
       <AppProvider store={store}>
@@ -76,6 +83,7 @@ function renderReactApp() {
         <PathFixesProvider>
           <NoticesProvider>
             <UserMessagesProvider>
+              <AuthenticatedHttpClientProvider>
               <div className="app-container">
                 <Routes>
                   <Route path="*" element={<PageWrap><PageNotFound /></PageWrap>} />
@@ -172,6 +180,7 @@ function renderReactApp() {
                   ))}
                 </Routes>
               </div>
+              </AuthenticatedHttpClientProvider>
             </UserMessagesProvider>
           </NoticesProvider>
         </PathFixesProvider>
@@ -248,7 +257,7 @@ console.log('[JWT Auth] Initialization auth strategy', {
 });
 
 initialize({
-  requireAuthenticatedUser: shouldRequireAuth,
+    requireAuthenticatedUser: shouldRequireAuth,
   handlers: {
     config: () => {
       mergeConfig({
