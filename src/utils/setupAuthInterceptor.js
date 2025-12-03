@@ -133,14 +133,22 @@ export function setupAuthInterceptor() {
           // This ensures we're using JWT instead of cookies
           config.withCredentials = false;
 
-          console.log('[JWT Auth] Request interceptor - JWT mode - HEADER ADDED', {
+          // Log detailed JWT usage for verification
+          const authHeader = config.headers.Authorization || 'NOT SET';
+          const hasAuthHeader = authHeader.startsWith('JWT ');
+          const usingCookies = config.withCredentials === true;
+
+          console.log('[JWT Auth] ✅ REQUEST USING JWT TOKEN', {
             url,
             method: config.method,
-            hasToken: !!jwtToken,
+            authMode: 'JWT',
+            hasJwtToken: true,
             tokenLength: jwtToken ? jwtToken.length : 0,
-            tokenPreview: jwtToken ? jwtToken.substring(0, 30) + '...' : null,
-            headerValue: `JWT ${jwtToken.substring(0, 30)}...`,
-            headerAdded: true,
+            tokenPreview: jwtToken ? jwtToken.substring(0, 50) + '...' : null,
+            authorizationHeader: hasAuthHeader ? `${authHeader.substring(0, 50)}...` : 'MISSING',
+            withCredentials: config.withCredentials,
+            usingCookies: usingCookies,
+            confirmation: hasAuthHeader && !usingCookies ? '✅ JWT AUTH CONFIRMED' : '❌ JWT AUTH NOT WORKING',
           });
           safeLogInfo('[JWT Auth] Request interceptor - JWT mode', {
             url,
@@ -156,15 +164,20 @@ export function setupAuthInterceptor() {
           // Remove Authorization header if it exists (from previous JWT mode)
           delete config.headers.Authorization;
 
-          // Only log occasionally to avoid spam
-          if (Math.random() < 0.01) { // Log 1% of requests
-            safeLogInfo('[JWT Auth] Request interceptor - Cookie mode', {
-              url,
-              method: config.method,
-              mode,
-              hasJwtToken: !!jwtToken,
-            });
-          }
+          // Log cookie-based auth usage for verification
+          const hasAuthHeader = config.headers.Authorization && config.headers.Authorization.startsWith('JWT ');
+          const usingCookies = config.withCredentials === true;
+
+          console.log('[JWT Auth] 🍪 REQUEST USING COOKIES', {
+            url,
+            method: config.method,
+            authMode: 'COOKIE',
+            hasJwtToken: !!jwtToken,
+            authorizationHeader: hasAuthHeader ? 'PRESENT (should not be)' : 'NOT SET (correct)',
+            withCredentials: config.withCredentials,
+            usingCookies: usingCookies,
+            confirmation: !hasAuthHeader && usingCookies ? '✅ COOKIE AUTH CONFIRMED' : '⚠️ AUTH MODE UNCLEAR',
+          });
         }
 
         return config;

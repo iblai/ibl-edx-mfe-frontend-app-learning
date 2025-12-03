@@ -1,3 +1,7 @@
+// CRITICAL: Load analytics shim FIRST to prevent "sendTrackEvent is undefined" errors
+// This must be imported before any frontend-platform modules that might use analytics
+import './utils/analytics-shim';
+
 import {
   APP_INIT_ERROR, APP_READY, subscribe, initialize,
   mergeConfig,
