@@ -220,17 +220,17 @@ subscribe(APP_INIT_ERROR, (error) => {
 
 // Determine authentication strategy:
 // - If NOT in iframe: Always use cookie-based auth (require authenticated user)
-// - If in iframe WITH JWT token (test token or JWT_AUTH_ENABLED): Use JWT auth (don't require cookie auth)
-// - If in iframe WITHOUT JWT token: Use cookie-based auth (require authenticated user)
+// - If in iframe WITH JWT token (test token): Use JWT auth (don't require cookie auth)
+// - If in iframe WITH JWT_AUTH_ENABLED: Use JWT auth (don't require cookie auth, token will come via postMessage)
+// - If in iframe WITHOUT JWT token AND WITHOUT JWT_AUTH_ENABLED: Use cookie-based auth (require authenticated user)
 const isInIframe = window.self !== window.top;
 const hasTestToken = !!process.env.JWT_TEST_TOKEN;
 const jwtAuthEnabled = process.env.JWT_AUTH_ENABLED === 'true';
-const hasJwtTokenOrEnabled = hasTestToken || jwtAuthEnabled;
 
 // Require cookie-based auth unless:
 // 1. We're in an iframe AND
-// 2. We have a JWT token (test token) OR JWT auth is enabled (will receive token via postMessage)
-const shouldRequireAuth = !isInIframe || (isInIframe && !hasJwtTokenOrEnabled);
+// 2. (We have a test token OR JWT auth is enabled - meaning we'll use JWT)
+const shouldRequireAuth = !isInIframe || (isInIframe && !hasTestToken && !jwtAuthEnabled);
 
 console.log('[JWT Auth] Initialization auth strategy', {
   isInIframe,
