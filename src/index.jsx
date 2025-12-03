@@ -1022,6 +1022,11 @@ initialize({
           ? process.env.JWT_AUTH_ORIGIN_WHITELIST.split(',').map(origin => origin.trim())
           : [],
         JWT_TEST_TOKEN: process.env.JWT_TEST_TOKEN || null, // TEST MODE: Hardcoded token for testing
+        // Dummy values for required config keys to prevent APP_INIT_ERROR
+        // These are required by Studio Footer and Optimizely components
+        SUPPORT_EMAIL: process.env.SUPPORT_EMAIL || 'support@example.com',
+        ENABLE_ACCESSIBILITY_PAGE: process.env.ENABLE_ACCESSIBILITY_PAGE || false,
+        OPTIMIZELY_FULL_STACK_SDK_KEY: process.env.OPTIMIZELY_FULL_STACK_SDK_KEY || '',
       }, 'LearnerAppConfig');
         } catch (configError) {
           console.error('[JWT Auth] Error in config handler:', configError);
