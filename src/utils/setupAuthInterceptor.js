@@ -128,6 +128,10 @@ export function setupAuthInterceptor() {
 
         // If we're in JWT mode and have a token, add Authorization header
         if (mode === 'jwt' && jwtToken) {
+          // CRITICAL: Skip frontend-platform's JWT token refresh interceptor
+          // This prevents it from trying to refresh token from cookies (which don't exist in JWT mode)
+          config.skipJwtTokenRefresh = true;
+
           // Add JWT token to Authorization header
           // Format: Authorization: JWT <token>
           config.headers.Authorization = `JWT ${jwtToken}`;
