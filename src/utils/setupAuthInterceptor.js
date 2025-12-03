@@ -110,10 +110,12 @@ export function setupAuthInterceptor() {
         const { mode, jwtToken } = globalAuthState;
         const url = config.url || config.baseURL || 'unknown';
 
-        // Log detailed request information including ALL headers
-        logRequestDetails(config, 'request');
+        // Ensure headers object exists
+        if (!config.headers) {
+          config.headers = {};
+        }
 
-        // Log interceptor state for debugging
+        // Log interceptor state for debugging (before modification)
         console.log('[JWT Auth] Request interceptor called', {
           mode,
           hasToken: !!jwtToken,
@@ -121,6 +123,7 @@ export function setupAuthInterceptor() {
           tokenPreview: jwtToken ? jwtToken.substring(0, 30) + '...' : null,
           url,
           method: config.method,
+          originalWithCredentials: config.withCredentials,
         });
 
         // If we're in JWT mode and have a token, add Authorization header
@@ -131,6 +134,7 @@ export function setupAuthInterceptor() {
 
           // For cross-origin requests, disable credentials (cookies)
           // This ensures we're using JWT instead of cookies
+          // CRITICAL: Must set this AFTER headers are set to avoid config errors
           config.withCredentials = false;
 
           // Log detailed JWT usage for verification
@@ -179,6 +183,9 @@ export function setupAuthInterceptor() {
             confirmation: !hasAuthHeader && usingCookies ? '✅ COOKIE AUTH CONFIRMED' : '⚠️ AUTH MODE UNCLEAR',
           });
         }
+
+        // Log request details AFTER all modifications (so we see the final config)
+        logRequestDetails(config, 'request');
 
         return config;
       },

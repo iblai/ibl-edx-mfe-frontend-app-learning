@@ -187,8 +187,25 @@ export function logRequestDetails(config, phase = 'request') {
 
 /**
  * Logs detailed response information including status and headers.
+ * Note: We avoid JSON.stringify on response.data to prevent consuming the response stream
+ * which could cause SIGPIPE errors if the response isn't fully read.
  */
 export function logResponseDetails(response, phase = 'response') {
+  // Calculate data size safely without consuming the stream
+  let dataSize = 0;
+  try {
+    if (response.data) {
+      // Only calculate size if data is already parsed (not a stream)
+      if (typeof response.data === 'object' && !(response.data instanceof Blob) && !(response.data instanceof ArrayBuffer)) {
+        dataSize = JSON.stringify(response.data).length;
+      } else if (typeof response.data === 'string') {
+        dataSize = response.data.length;
+      }
+    }
+  } catch (e) {
+    // If stringify fails, dataSize remains 0 - this is fine for logging
+  }
+
   const logData = {
     phase,
     url: response.config?.url || 'unknown',
@@ -196,7 +213,8 @@ export function logResponseDetails(response, phase = 'response') {
     status: response.status,
     statusText: response.statusText,
     headers: response.headers ? { ...response.headers } : {},
-    dataSize: response.data ? JSON.stringify(response.data).length : 0,
+    dataSize,
+    hasData: !!response.data,
     timestamp: new Date().toISOString(),
   };
 
@@ -221,6 +239,13 @@ export function logErrorResponse(error) {
     method: error?.config?.method || 'GET',
     headers: error?.response?.headers ? { ...error.response.headers } : {},
     requestHeaders: error?.config?.headers ? { ...error.config.headers } : {},
+    // Include error type and custom attributes for config errors
+    errorType: error?.customAttributes?.httpErrorType || 'unknown',
+    errorMessage: error?.customAttributes?.httpErrorMessage || error?.message,
+    hasResponse: !!error?.response,
+    hasRequest: !!error?.request,
+    hasConfig: !!error?.config,
+    withCredentials: error?.config?.withCredentials,
     timestamp: new Date().toISOString(),
   };
 
