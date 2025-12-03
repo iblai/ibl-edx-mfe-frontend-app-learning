@@ -164,7 +164,7 @@
             // Monitor require.cache and patch analytics modules as they're loaded
             const originalCacheSet = Object.defineProperty;
             const cacheKeys = Object.keys(require.cache);
-            
+
             // Patch existing cache entries
             cacheKeys.forEach(function(key) {
               if (key.includes('frontend-platform') && key.includes('analytics')) {
@@ -187,11 +187,11 @@
 
           // Store original Object.prototype methods
           const originalHasOwnProperty = Object.prototype.hasOwnProperty;
-          
+
           // Create a function that patches any object that might be analytics
           function patchAnalyticsObject(obj) {
             if (!obj || typeof obj !== 'object') return obj;
-            
+
             // If it looks like it might be an analytics object, patch it
             if (!obj.sendTrackEvent || typeof obj.sendTrackEvent !== 'function') {
               obj.sendTrackEvent = mockSendTrackEvent;
@@ -199,7 +199,7 @@
             if (!obj.sendTrackingLogEvent || typeof obj.sendTrackingLogEvent !== 'function') {
               obj.sendTrackingLogEvent = mockSendTrackingLogEvent;
             }
-            
+
             return obj;
           }
 
