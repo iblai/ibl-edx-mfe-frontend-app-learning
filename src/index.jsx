@@ -436,12 +436,53 @@ class SimpleErrorBoundary extends React.Component {
       this.errorLogged = true;
     }
 
+    // CRITICAL: If this is an analytics error, patch analytics aggressively and retry
+    const errorMessage = error?.message || String(error);
+    const isAnalyticsError = errorMessage.includes('sendTrackEvent') ||
+                            errorMessage.includes('Cannot read properties of undefined');
+
+    if (isAnalyticsError) {
+      console.log('[JWT Auth] Detected analytics error, patching aggressively...');
+
+      // Aggressively patch analytics
+      patchAnalyticsGlobally();
+
+      // Also patch require.cache
+      if (typeof require !== 'undefined' && require.cache) {
+        Object.keys(require.cache).forEach((key) => {
+          if (key.includes('analytics') || key.includes('track') || key.includes('paragon')) {
+            try {
+              const cachedModule = require.cache[key];
+              if (cachedModule && cachedModule.exports) {
+                if (!cachedModule.exports.sendTrackEvent) {
+                  cachedModule.exports.sendTrackEvent = mockSendTrackEvent;
+                }
+                if (cachedModule.exports.default && !cachedModule.exports.default.sendTrackEvent) {
+                  cachedModule.exports.default.sendTrackEvent = mockSendTrackEvent;
+                }
+              }
+            } catch (e) {
+              // Ignore
+            }
+          }
+        });
+      }
+
+      // Patch window
+      if (typeof window !== 'undefined') {
+        window.sendTrackEvent = mockSendTrackEvent;
+        window.sendTrackingLogEvent = mockSendTrackingLogEvent;
+      }
+
+      console.log('[JWT Auth] Analytics patched, will retry render');
+    }
+
     // Prevent infinite loops - reset error state after a delay
     if (this.state.errorCount < 3) {
       setTimeout(() => {
         this.setState({ hasError: false, error: null, errorCount: this.state.errorCount + 1 });
         this.errorLogged = false;
-      }, 100);
+      }, isAnalyticsError ? 500 : 100); // Longer delay for analytics errors to allow patching to take effect
     }
   }
 
@@ -499,6 +540,53 @@ function renderReactApp() {
     // Use the global patch function for consistency
     console.log('[JWT Auth] Pre-render: Patching analytics globally');
     patchAnalyticsGlobally();
+
+    // AGGRESSIVE PATCH: Also patch require.cache more aggressively
+    // Paragon components might have already loaded analytics as undefined
+    if (typeof require !== 'undefined' && require.cache) {
+      Object.keys(require.cache).forEach((key) => {
+        // Patch ANY module that might be analytics-related
+        if (key.includes('analytics') || key.includes('track')) {
+          try {
+            const cachedModule = require.cache[key];
+            if (cachedModule && cachedModule.exports) {
+              // If exports is undefined or doesn't have sendTrackEvent, patch it
+              if (!cachedModule.exports || !cachedModule.exports.sendTrackEvent) {
+                if (!cachedModule.exports) {
+                  cachedModule.exports = {};
+                }
+                cachedModule.exports.sendTrackEvent = mockSendTrackEvent;
+                cachedModule.exports.sendTrackingLogEvent = mockSendTrackingLogEvent;
+                cachedModule.exports.default = {
+                  sendTrackEvent: mockSendTrackEvent,
+                  sendTrackingLogEvent: mockSendTrackingLogEvent,
+                };
+                console.log('[JWT Auth] Pre-render: Aggressively patched analytics module:', key);
+              }
+            }
+          } catch (e) {
+            // Ignore errors
+          }
+        }
+      });
+    }
+
+    // Also ensure window has the analytics mock
+    if (typeof window !== 'undefined') {
+      if (!window.__EDX_ANALYTICS_MOCK__) {
+        window.__EDX_ANALYTICS_MOCK__ = {
+          sendTrackEvent: mockSendTrackEvent,
+          sendTrackingLogEvent: mockSendTrackingLogEvent,
+          default: {
+            sendTrackEvent: mockSendTrackEvent,
+            sendTrackingLogEvent: mockSendTrackingLogEvent,
+          }
+        };
+      }
+      window.sendTrackEvent = mockSendTrackEvent;
+      window.sendTrackingLogEvent = mockSendTrackingLogEvent;
+    }
+
     console.log('[JWT Auth] Pre-render: Analytics patching complete');
 
     // Ensure auth interceptor is set up for JWT token support

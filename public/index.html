@@ -121,31 +121,92 @@
             return Promise.resolve();
           };
 
-          window.__EDX_ANALYTICS_MOCK__ = {
+          // Create a comprehensive analytics object
+          const analyticsMock = {
             sendTrackEvent: mockSendTrackEvent,
             sendTrackingLogEvent: mockSendTrackingLogEvent,
+            default: {
+              sendTrackEvent: mockSendTrackEvent,
+              sendTrackingLogEvent: mockSendTrackingLogEvent,
+            }
           };
+
+          // Use Proxy to catch any property access
+          const analyticsProxy = new Proxy(analyticsMock, {
+            get: function(target, prop) {
+              if (prop in target) {
+                return target[prop];
+              }
+              // For any property access, return a safe function
+              if (typeof prop === 'string' && prop.toLowerCase().includes('track')) {
+                return mockSendTrackEvent;
+              }
+              if (prop === 'default') {
+                return analyticsProxy;
+              }
+              return undefined;
+            }
+          });
+
+          window.__EDX_ANALYTICS_MOCK__ = analyticsProxy;
 
           // Also set on window for direct access
           window.sendTrackEvent = mockSendTrackEvent;
           window.sendTrackingLogEvent = mockSendTrackingLogEvent;
 
+          // CRITICAL: Intercept property access on undefined objects
+          // This catches cases where code tries to access analytics.sendTrackEvent when analytics is undefined
+          // We can't directly intercept undefined, but we can patch Object.prototype.get
+          // However, a safer approach is to patch require.cache and also intercept module loading
+
           // Patch require cache if available (for CommonJS modules)
           if (typeof require !== 'undefined' && require.cache) {
-            // This will be used if modules try to require analytics
-            const originalRequire = require;
-            const analyticsShimPath = '@edx/frontend-platform/analytics';
-
-            // Intercept require calls for analytics module
-            const patchedRequire = function(modulePath) {
-              if (modulePath === analyticsShimPath || modulePath.includes('frontend-platform/analytics')) {
-                return window.__EDX_ANALYTICS_MOCK__;
+            // Monitor require.cache and patch analytics modules as they're loaded
+            const originalCacheSet = Object.defineProperty;
+            const cacheKeys = Object.keys(require.cache);
+            
+            // Patch existing cache entries
+            cacheKeys.forEach(function(key) {
+              if (key.includes('frontend-platform') && key.includes('analytics')) {
+                try {
+                  require.cache[key].exports = analyticsProxy;
+                } catch (e) {
+                  // Ignore
+                }
               }
-              return originalRequire.apply(this, arguments);
-            };
+            });
 
-            // Note: We can't actually replace require, but we set up the mock
+            // Set up a watcher for new cache entries (using Object.defineProperty on require.cache)
+            // Note: This is a best-effort approach since we can't fully intercept require
           }
+
+          // CRITICAL: Patch any existing analytics modules in the global scope
+          // Some modules might store analytics in a variable that's undefined
+          // We'll set up a global interceptor that patches undefined property access
+          // This is a last resort but necessary for paragon components
+
+          // Store original Object.prototype methods
+          const originalHasOwnProperty = Object.prototype.hasOwnProperty;
+          
+          // Create a function that patches any object that might be analytics
+          function patchAnalyticsObject(obj) {
+            if (!obj || typeof obj !== 'object') return obj;
+            
+            // If it looks like it might be an analytics object, patch it
+            if (!obj.sendTrackEvent || typeof obj.sendTrackEvent !== 'function') {
+              obj.sendTrackEvent = mockSendTrackEvent;
+            }
+            if (!obj.sendTrackingLogEvent || typeof obj.sendTrackingLogEvent !== 'function') {
+              obj.sendTrackingLogEvent = mockSendTrackingLogEvent;
+            }
+            
+            return obj;
+          }
+
+          // Store patcher function globally so it can be called later
+          window.__PATCH_ANALYTICS__ = function(obj) {
+            return patchAnalyticsObject(obj);
+          };
 
           console.log('[JWT Auth] Analytics mocks installed (before modules load)');
         })();
