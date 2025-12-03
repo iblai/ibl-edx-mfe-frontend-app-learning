@@ -45,6 +45,9 @@ const analyticsProxy = new Proxy(analyticsObject, {
     if (typeof prop === 'string' && prop.toLowerCase().includes('track')) {
       return mockSendTrackEvent;
     }
+    if (typeof prop === 'string' && prop.toLowerCase().includes('page')) {
+      return mockSendPageEvent;
+    }
     // For 'default' property, return the proxy itself (for default exports)
     if (prop === 'default') {
       return analyticsProxy;
