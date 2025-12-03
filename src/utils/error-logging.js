@@ -231,35 +231,42 @@ export function logResponseDetails(response, phase = 'response') {
  * Logs error response details.
  */
 export function logErrorResponse(error) {
+  // Safely extract error information with proper null checks
+  const errorConfig = error?.config || {};
+  const errorResponse = error?.response || {};
+  const errorRequest = error?.request || {};
+
   const logData = {
     message: error?.message || 'Unknown error',
-    status: error?.response?.status,
-    statusText: error?.response?.statusText,
-    url: error?.config?.url || error?.request?.responseURL || 'unknown',
-    method: error?.config?.method || 'GET',
-    headers: error?.response?.headers ? { ...error.response.headers } : {},
-    requestHeaders: error?.config?.headers ? { ...error.config.headers } : {},
+    status: errorResponse?.status,
+    statusText: errorResponse?.statusText,
+    url: errorConfig?.url || errorRequest?.responseURL || 'unknown',
+    method: (errorConfig?.method || 'GET').toUpperCase(),
+    headers: errorResponse?.headers ? { ...errorResponse.headers } : {},
+    requestHeaders: errorConfig?.headers ? { ...errorConfig.headers } : {},
     // Include error type and custom attributes for config errors
     errorType: error?.customAttributes?.httpErrorType || 'unknown',
-    errorMessage: error?.customAttributes?.httpErrorMessage || error?.message,
+    errorMessage: error?.customAttributes?.httpErrorMessage || error?.message || 'Unknown error',
     hasResponse: !!error?.response,
     hasRequest: !!error?.request,
     hasConfig: !!error?.config,
-    withCredentials: error?.config?.withCredentials,
+    withCredentials: errorConfig?.withCredentials,
     timestamp: new Date().toISOString(),
   };
 
   // Log all header locations to debug header merging issues
+  // Safely access headers with proper null checks
+  const requestHeaders = logData.requestHeaders || {};
   const allHeaderLocations = {
-    direct: logData.requestHeaders.Authorization,
-    common: logData.requestHeaders.common?.Authorization,
-    get: logData.requestHeaders.get?.Authorization,
-    post: logData.requestHeaders.post?.Authorization,
+    direct: requestHeaders.Authorization,
+    common: requestHeaders.common?.Authorization,
+    get: requestHeaders.get?.Authorization,
+    post: requestHeaders.post?.Authorization,
   };
 
   // Truncate Authorization header if present (in all locations)
   Object.keys(allHeaderLocations).forEach(key => {
-    if (allHeaderLocations[key]) {
+    if (allHeaderLocations[key] && typeof allHeaderLocations[key] === 'string') {
       const authHeader = allHeaderLocations[key];
       allHeaderLocations[key] = authHeader.length > 50
         ? `${authHeader.substring(0, 50)}...`
@@ -271,7 +278,7 @@ export function logErrorResponse(error) {
   logData.headerLocations = allHeaderLocations;
 
   // Truncate Authorization header if present (for backward compatibility)
-  if (logData.requestHeaders.Authorization) {
+  if (logData.requestHeaders?.Authorization && typeof logData.requestHeaders.Authorization === 'string') {
     const authHeader = logData.requestHeaders.Authorization;
     logData.requestHeaders.Authorization = authHeader.length > 50
       ? `${authHeader.substring(0, 50)}...`
@@ -285,6 +292,8 @@ export function logErrorResponse(error) {
     method: logData.method,
     status: logData.status,
     message: logData.message,
+    errorType: logData.errorType,
+    errorMessage: logData.errorMessage,
   });
 }
 

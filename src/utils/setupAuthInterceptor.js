@@ -205,10 +205,13 @@ export function setupAuthInterceptor() {
         // Axios merges headers from common, method-specific, and direct properties
         // We need to ensure it's in the right place for Axios to use it
         if (mode === 'jwt' && jwtToken) {
+          // Get method for this request (needed for method-specific header location)
+          const requestMethod = (config.method || 'get').toLowerCase();
+
           // Final check - verify header is accessible from all locations
           const directHeader = config.headers.Authorization;
           const commonHeader = config.headers.common?.Authorization;
-          const methodHeader = config.headers[method]?.Authorization;
+          const methodHeader = config.headers[requestMethod]?.Authorization;
 
           // If any are missing, set them all again
           if (!directHeader || !commonHeader || !methodHeader) {
@@ -218,10 +221,10 @@ export function setupAuthInterceptor() {
               config.headers.common = {};
             }
             config.headers.common.Authorization = authHeaderValue;
-            if (!config.headers[method]) {
-              config.headers[method] = {};
+            if (!config.headers[requestMethod]) {
+              config.headers[requestMethod] = {};
             }
-            config.headers[method].Authorization = authHeaderValue;
+            config.headers[requestMethod].Authorization = authHeaderValue;
 
             console.warn('[JWT Auth] Re-applied Authorization header - some locations were missing', {
               url,
@@ -237,7 +240,7 @@ export function setupAuthInterceptor() {
             method: config.method,
             directHeader: config.headers.Authorization ? `${config.headers.Authorization.substring(0, 50)}...` : 'MISSING',
             commonHeader: config.headers.common?.Authorization ? `${config.headers.common.Authorization.substring(0, 50)}...` : 'MISSING',
-            methodHeader: config.headers[method]?.Authorization ? `${config.headers[method].Authorization.substring(0, 50)}...` : 'MISSING',
+            methodHeader: config.headers[requestMethod]?.Authorization ? `${config.headers[requestMethod].Authorization.substring(0, 50)}...` : 'MISSING',
             allHeadersKeys: Object.keys(config.headers),
           });
         }
