@@ -134,7 +134,20 @@ export function setupAuthInterceptor() {
 
           // Add JWT token to Authorization header
           // Format: Authorization: JWT <token>
-          config.headers.Authorization = `JWT ${jwtToken}`;
+          // Set on both common and method-specific to ensure Axios uses it
+          const authHeaderValue = `JWT ${jwtToken}`;
+          config.headers.Authorization = authHeaderValue;
+          // Also set on common headers (Axios uses this for all methods)
+          if (!config.headers.common) {
+            config.headers.common = {};
+          }
+          config.headers.common.Authorization = authHeaderValue;
+          // Also set on method-specific header (for the specific HTTP method)
+          const method = (config.method || 'get').toLowerCase();
+          if (!config.headers[method]) {
+            config.headers[method] = {};
+          }
+          config.headers[method].Authorization = authHeaderValue;
 
           // For cross-origin requests, disable credentials (cookies)
           // This ensures we're using JWT instead of cookies
@@ -202,6 +215,25 @@ export function setupAuthInterceptor() {
     // Response interceptor for error handling
     const responseInterceptorId = client.interceptors.response.use(
       (response) => {
+        // Verify Authorization header was sent (check the request config from response)
+        if (response.config) {
+          const sentAuthHeader = response.config.headers?.Authorization ||
+                                 response.config.headers?.common?.Authorization ||
+                                 response.config.headers?.[(response.config.method || 'get').toLowerCase()]?.Authorization;
+
+          if (globalAuthState.mode === 'jwt' && globalAuthState.jwtToken) {
+            const hasAuthHeader = sentAuthHeader && sentAuthHeader.startsWith('JWT ');
+            console.log('[JWT Auth] Response received - verifying Authorization header was sent', {
+              url: response.config.url,
+              method: response.config.method,
+              status: response.status,
+              hasAuthHeader,
+              authHeaderPreview: hasAuthHeader ? `${sentAuthHeader.substring(0, 50)}...` : 'MISSING',
+              confirmation: hasAuthHeader ? '✅ Authorization header was sent' : '❌ Authorization header missing',
+            });
+          }
+        }
+
         // Log successful response details
         logResponseDetails(response, 'success');
         // Success response - pass through
