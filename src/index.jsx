@@ -218,10 +218,30 @@ subscribe(APP_INIT_ERROR, (error) => {
   );
 });
 
-// Allow iframing from any domain by not requiring authenticated user when in iframe
-// This allows the MFE to load in cross-origin iframes without cookie-based authentication
+// Determine authentication strategy:
+// - If NOT in iframe: Always use cookie-based auth (require authenticated user)
+// - If in iframe WITH JWT token (test token or JWT_AUTH_ENABLED): Use JWT auth (don't require cookie auth)
+// - If in iframe WITHOUT JWT token: Use cookie-based auth (require authenticated user)
 const isInIframe = window.self !== window.top;
-const shouldRequireAuth = !isInIframe; // Don't require auth when in iframe
+const hasTestToken = !!process.env.JWT_TEST_TOKEN;
+const jwtAuthEnabled = process.env.JWT_AUTH_ENABLED === 'true';
+const hasJwtTokenOrEnabled = hasTestToken || jwtAuthEnabled;
+
+// Require cookie-based auth unless:
+// 1. We're in an iframe AND
+// 2. We have a JWT token (test token) OR JWT auth is enabled (will receive token via postMessage)
+const shouldRequireAuth = !isInIframe || (isInIframe && !hasJwtTokenOrEnabled);
+
+console.log('[JWT Auth] Initialization auth strategy', {
+  isInIframe,
+  hasTestToken,
+  jwtAuthEnabled,
+  hasJwtTokenOrEnabled,
+  shouldRequireAuth,
+  strategy: shouldRequireAuth
+    ? 'cookie-based (require authenticated user)'
+    : 'JWT (allow unauthenticated, will use JWT token)',
+});
 
 initialize({
   requireAuthenticatedUser: shouldRequireAuth,
