@@ -69,63 +69,65 @@ export function useAuthMode() {
       testTokenPreview: testToken ? testToken.substring(0, 30) + '...' : null,
     });
 
-    // TEST MODE: Force JWT if test token exists AND we're in an iframe
-    // Direct access (not in iframe) should always use cookie-based auth, even with test token
-    if (hasTestToken && inIframe) {
+    // Priority 1: If cookies are available (same base domain), always use cookie-based auth
+    // This works for both direct access and same-origin iframes
+    if (cookiesAvailable) {
+      const logData = {
+        mode: 'cookie',
+        jwtAuthEnabled,
+        inIframe,
+        cookiesAvailable: true,
+        hasJwtToken: !!jwtToken,
+        hasTestToken,
+        reason: inIframe ? 'in iframe but cookies available (same base domain)' : 'direct access with cookies',
+      };
+      console.log('[JWT Auth] Authentication mode determined - using cookies', logData);
+      logInfo('[JWT Auth] Authentication mode determined', logData);
+      return 'cookie';
+    }
+
+    // Priority 2: If in iframe WITHOUT cookies (cross-origin), use JWT if available
+    // TEST MODE: If test token exists AND we're in iframe AND no cookies, use JWT
+    if (hasTestToken && inIframe && !cookiesAvailable) {
       // Use test token directly if jwtToken from hook is not available yet
       const tokenToUse = jwtToken || testToken;
       const logData = {
         mode: 'jwt',
         jwtAuthEnabled,
         inIframe,
-        cookiesAvailable,
+        cookiesAvailable: false,
         hasJwtToken: !!jwtToken,
         hasTestToken: true,
         usingTestToken: !jwtToken,
         tokenLength: tokenToUse ? tokenToUse.length : 0,
         testMode: true,
+        reason: 'in iframe, no cookies, test token available',
       };
-      console.log('[JWT Auth] TEST MODE: Forcing JWT authentication mode (in iframe)', logData);
+      console.log('[JWT Auth] TEST MODE: Using JWT authentication (in iframe, no cookies)', logData);
       logInfo('[JWT Auth] Authentication mode determined (TEST MODE)', logData);
       return 'jwt';
     }
 
-    // If test token exists but we're NOT in iframe, use cookie-based auth
-    if (hasTestToken && !inIframe) {
-      const logData = {
-        mode: 'cookie',
-        jwtAuthEnabled,
-        inIframe: false,
-        cookiesAvailable,
-        hasJwtToken: !!jwtToken,
-        hasTestToken: true,
-        reason: 'direct access - test token ignored, using cookie auth',
-      };
-      console.log('[JWT Auth] TEST MODE: Test token present but direct access - using cookie auth', logData);
-      logInfo('[JWT Auth] Authentication mode determined (TEST MODE - direct access)', logData);
-      return 'cookie';
-    }
-
-    // Only use JWT if feature is enabled
+    // Priority 3: If in iframe WITHOUT cookies, use JWT if feature enabled and token available
     if (jwtAuthEnabled && inIframe && !cookiesAvailable && jwtToken) {
       const logData = {
         mode: 'jwt',
         jwtAuthEnabled,
         inIframe,
-        cookiesAvailable,
+        cookiesAvailable: false,
         hasJwtToken: !!jwtToken,
+        reason: 'in iframe, no cookies, JWT token available',
       };
-      console.log('[JWT Auth] Authentication mode determined', logData);
+      console.log('[JWT Auth] Authentication mode determined - using JWT', logData);
       logInfo('[JWT Auth] Authentication mode determined', logData);
       return 'jwt';
     }
 
     // Default to cookie-based authentication
     // This covers:
+    // - Not in iframe (direct access) - always use cookies
     // - JWT auth feature is disabled
-    // - Not in iframe (direct access)
-    // - In iframe but cookies are available (same-origin or SameSite allows)
-    // - In iframe but no JWT token received yet
+    // - In iframe but no JWT token received yet (will wait for token or fallback to cookies)
     const logData = {
       mode: 'cookie',
       jwtAuthEnabled,
