@@ -13,7 +13,14 @@ import { useModel } from '../../generic/model-store';
 
 const ProgressTab = () => {
   const courseId = useContextId();
-  const { disableProgressGraph } = useModel('progress', courseId);
+  const progressData = useModel('progress', courseId);
+
+  // Log progress data for debugging
+  console.log('[JWT Auth] ProgressTab - progressData:', progressData);
+  console.log('[JWT Auth] ProgressTab - courseId:', courseId);
+
+  // Safely extract disableProgressGraph with fallback
+  const disableProgressGraph = progressData?.disableProgressGraph ?? false;
 
   // Use window.innerWidth directly instead of useWindowSize() to avoid paragon analytics dependency
   // Paragon's useWindowSize() internally uses useTrackColorSchemeChoice which requires analytics
@@ -26,26 +33,43 @@ const ProgressTab = () => {
     return null;
   }
 
-  return (
-    <>
-      <ProgressHeader />
-      <div className="row w-100 m-0">
-        {/* Main body */}
-        <div className="col-12 col-md-8 p-0">
-          {!disableProgressGraph && <CourseCompletion />}
-          <ProgressTabCertificateStatusMainBodySlot />
-          <ProgressTabCourseGradeSlot />
-          <ProgressTabGradeBreakdownSlot />
-        </div>
-
-        {/* Side panel */}
-        <div className="col-12 col-md-4 p-0 px-md-4">
-          <ProgressTabCertificateStatusSidePanelSlot />
-          <ProgressTabRelatedLinksSlot />
-        </div>
+  // If progress data is not available, show loading state
+  if (!progressData) {
+    console.warn('[JWT Auth] ProgressTab - progressData is not available, showing loading state');
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <div style={{ fontSize: '18px', color: '#666' }}>Loading progress data...</div>
       </div>
-    </>
-  );
+    );
+  }
+
+  try {
+    return (
+      <>
+        <ProgressHeader />
+        <div className="row w-100 m-0">
+          {/* Main body */}
+          <div className="col-12 col-md-8 p-0">
+            {!disableProgressGraph && <CourseCompletion />}
+            <ProgressTabCertificateStatusMainBodySlot />
+            <ProgressTabCourseGradeSlot />
+            <ProgressTabGradeBreakdownSlot />
+          </div>
+
+          {/* Side panel */}
+          <div className="col-12 col-md-4 p-0 px-md-4">
+            <ProgressTabCertificateStatusSidePanelSlot />
+            <ProgressTabRelatedLinksSlot />
+          </div>
+        </div>
+      </>
+    );
+  } catch (error) {
+    console.error('[JWT Auth] ProgressTab - Rendering error:', error);
+    console.error('[JWT Auth] ProgressTab - Error stack:', error.stack);
+    console.error('[JWT Auth] ProgressTab - Progress data:', progressData);
+    throw error; // Re-throw to let ErrorBoundary handle it
+  }
 };
 
 export default ProgressTab;

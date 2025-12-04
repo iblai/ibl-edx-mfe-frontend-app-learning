@@ -49,8 +49,15 @@ export class ErrorBoundary extends React.Component {
 
       console.error('[JWT Auth] ErrorBoundary: Rendering error page', {
         error: this.state.error,
+        errorMessage: this.state.error?.message,
+        errorName: this.state.error?.name,
+        errorStack: this.state.error?.stack,
         errorInfo: this.state.errorInfo,
+        componentStack: this.state.errorInfo?.componentStack,
       });
+      // Also log error message prominently
+      console.error('[JWT Auth] ErrorBoundary ERROR:', this.state.error?.message || 'Unknown error');
+      console.error('[JWT Auth] ErrorBoundary STACK:', this.state.error?.stack);
 
       return (
         <ErrorPage
