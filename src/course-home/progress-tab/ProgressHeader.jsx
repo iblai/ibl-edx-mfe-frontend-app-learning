@@ -14,9 +14,20 @@ const ProgressHeader = () => {
     targetUserId,
   } = useSelector(state => state.courseHome);
 
-  const { administrator, userId } = getAuthenticatedUser();
+  // Safely get authenticated user - may be null in JWT mode
+  const authenticatedUser = getAuthenticatedUser();
+  const administrator = authenticatedUser?.administrator ?? false;
+  const userId = authenticatedUser?.userId ?? null;
 
-  const { studioUrl, username } = useModel('progress', courseId);
+  // Safely get progress data - may be null if not loaded yet
+  const progressData = useModel('progress', courseId);
+  const studioUrl = progressData?.studioUrl ?? null;
+  const username = progressData?.username ?? null;
+
+  // If courseId is not available, return null (component will re-render when courseId is available)
+  if (!courseId) {
+    return null;
+  }
 
   const viewingOtherStudentsProgressPage = (targetUserId && targetUserId !== userId);
 
