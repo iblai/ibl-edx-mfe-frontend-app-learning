@@ -163,7 +163,10 @@ export function setupAuthInterceptor() {
             });
             config.headers.Authorization = authHeaderValue; // Force it to be a string
           }
-
+          console.log('[JWT Auth] Authorization header', {
+            type: typeof config.headers.Authorization,
+            value: config.headers.Authorization,
+          });
           // For cross-origin requests, disable credentials (cookies)
           // This ensures we're using JWT instead of cookies
           // CRITICAL: Must set this AFTER headers are set to avoid config errors
