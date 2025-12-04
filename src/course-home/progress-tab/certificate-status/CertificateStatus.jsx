@@ -63,7 +63,9 @@ const CertificateStatus = () => {
   };
 
   const dispatch = useDispatch();
-  const { administrator } = getAuthenticatedUser();
+  // Safely get authenticated user - may be null in JWT mode
+  const authenticatedUser = getAuthenticatedUser();
+  const administrator = authenticatedUser?.administrator ?? false;
 
   let certStatus;
   let certWebViewUrl;

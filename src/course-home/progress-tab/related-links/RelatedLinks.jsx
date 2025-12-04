@@ -15,7 +15,9 @@ const RelatedLinks = () => {
     tabs,
   } = useModel('courseHomeMeta', courseId);
 
-  const { administrator } = getAuthenticatedUser();
+  // Safely get authenticated user - may be null in JWT mode
+  const authenticatedUser = getAuthenticatedUser();
+  const administrator = authenticatedUser?.administrator ?? false;
   const logLinkClicked = (linkName) => {
     sendTrackEvent('edx.ui.lms.course_progress.related_links.clicked', {
       org_key: org,

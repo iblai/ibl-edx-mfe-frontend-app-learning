@@ -33,7 +33,9 @@ const SubsectionTitleCell = ({ subsection }) => {
     url,
   } = subsection;
 
-  const { administrator } = getAuthenticatedUser();
+  // Safely get authenticated user - may be null in JWT mode
+  const authenticatedUser = getAuthenticatedUser();
+  const administrator = authenticatedUser?.administrator ?? false;
   const logSubsectionClicked = () => {
     sendTrackEvent('edx.ui.lms.course_progress.detailed_grades_assignment.clicked', {
       org_key: org,

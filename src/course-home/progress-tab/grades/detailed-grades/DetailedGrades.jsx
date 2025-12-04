@@ -13,7 +13,9 @@ import messages from '../messages';
 
 const DetailedGrades = () => {
   const intl = useIntl();
-  const { administrator } = getAuthenticatedUser();
+  // Safely get authenticated user - may be null in JWT mode
+  const authenticatedUser = getAuthenticatedUser();
+  const administrator = authenticatedUser?.administrator ?? false;
   const courseId = useContextId();
   const {
     org,

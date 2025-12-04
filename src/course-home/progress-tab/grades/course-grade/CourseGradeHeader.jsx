@@ -24,7 +24,9 @@ const CourseGradeHeader = () => {
     courserun_key: courseId,
   };
 
-  const { administrator } = getAuthenticatedUser();
+  // Safely get authenticated user - may be null in JWT mode
+  const authenticatedUser = getAuthenticatedUser();
+  const administrator = authenticatedUser?.administrator ?? false;
   const logUpgradeButtonClick = () => {
     sendTrackEvent('edx.ui.lms.course_progress.grades_upgrade.clicked', {
       org_key: org,
