@@ -29,11 +29,28 @@ export function hasSessionCookies() {
   try {
     // Check if we can access document.cookie
     if (typeof document === 'undefined' || !document.cookie) {
+      console.log('[JWT Auth] Cookie check', {
+        hasCookies: false,
+        reason: 'document.cookie not available',
+        documentAvailable: typeof document !== 'undefined',
+        cookieString: typeof document !== 'undefined' ? document.cookie : 'N/A',
+      });
       logInfo('[JWT Auth] Cookie check', { hasCookies: false, reason: 'document.cookie not available' });
       return false;
     }
 
     const cookies = document.cookie;
+
+    // Parse cookies into an object for easier inspection
+    const cookieObj = {};
+    if (cookies) {
+      cookies.split(';').forEach(cookie => {
+        const [name, ...valueParts] = cookie.trim().split('=');
+        if (name) {
+          cookieObj[name] = valueParts.join('='); // Rejoin in case value contains '='
+        }
+      });
+    }
 
     // Check for key OpenEdx session cookies
     const hasSessionId = cookies.includes('sessionid=');
@@ -41,22 +58,60 @@ export function hasSessionCookies() {
 
     // Optional: Check for JWT cookie (may be present in some setups)
     const hasJwtCookie = cookies.includes('edx-jwt-cookie-header-payload=');
+    const hasJwtSignature = cookies.includes('edx-jwt-cookie-signature=');
+    const hasUserInfo = cookies.includes('edx-user-info=');
 
     // Consider cookies available if we have at least sessionid and csrftoken
     const hasCookies = hasSessionId && hasCsrfToken;
+
+    // Log all cookie names found (for debugging)
+    const cookieNames = Object.keys(cookieObj);
+    const edxCookieNames = cookieNames.filter(name =>
+      name.includes('edx') ||
+      name.includes('sessionid') ||
+      name.includes('csrftoken') ||
+      name.includes('ibl_')
+    );
+
+    console.log('[JWT Auth] Cookie check - detailed', {
+      hasCookies,
+      hasSessionId,
+      hasCsrfToken,
+      hasJwtCookie,
+      hasJwtSignature,
+      hasUserInfo,
+      cookieLength: cookies.length,
+      totalCookieCount: cookieNames.length,
+      allCookieNames: cookieNames,
+      edxRelatedCookies: edxCookieNames,
+      sessionIdValue: cookieObj.sessionid ? `${cookieObj.sessionid.substring(0, 20)}...` : 'NOT FOUND',
+      csrfTokenValue: cookieObj.csrftoken ? `${cookieObj.csrftoken.substring(0, 20)}...` : 'NOT FOUND',
+      jwtCookieValue: cookieObj['edx-jwt-cookie-header-payload'] ? `${cookieObj['edx-jwt-cookie-header-payload'].substring(0, 30)}...` : 'NOT FOUND',
+      fullCookieString: cookies, // Log full cookie string for complete visibility
+    });
 
     logInfo('[JWT Auth] Cookie check', {
       hasCookies,
       hasSessionId,
       hasCsrfToken,
       hasJwtCookie,
+      hasJwtSignature,
+      hasUserInfo,
       cookieLength: cookies.length,
+      totalCookieCount: cookieNames.length,
+      edxRelatedCookies: edxCookieNames,
     });
 
     return hasCookies;
   } catch (e) {
     // Cross-origin iframe - cookies not accessible
     // This is expected in cross-origin scenarios
+    console.log('[JWT Auth] Cookie check (cross-origin)', {
+      hasCookies: false,
+      error: e.message,
+      errorType: e.name,
+      stack: e.stack,
+    });
     logInfo('[JWT Auth] Cookie check (cross-origin)', { hasCookies: false, error: e.message });
     return false;
   }
