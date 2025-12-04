@@ -38,6 +38,7 @@ import LiveTab from './course-home/live-tab/LiveTab';
 import CourseAccessErrorPage from './generic/CourseAccessErrorPage';
 import DecodePageRoute from './decode-page-route';
 import { DECODE_ROUTES, ROUTES } from './constants';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import PreferencesUnsubscribe from './preferences-unsubscribe';
 import PageNotFound from './generic/PageNotFound';
 import { AuthenticatedHttpClientProvider } from './contexts/AuthenticatedHttpClientContext';
@@ -145,14 +146,16 @@ function renderReactApp() {
                       path={route}
                       element={(
                         <DecodePageRoute>
-                          <TabContainer
-                            tab="progress"
-                            fetch={fetchProgressTab}
-                            slice="courseHome"
-                            isProgressTab
-                          >
+                          <ErrorBoundary>
+                            <TabContainer
+                              tab="progress"
+                              fetch={fetchProgressTab}
+                              slice="courseHome"
+                              isProgressTab
+                            >
                             <ProgressTab />
-                          </TabContainer>
+                            </TabContainer>
+                          </ErrorBoundary>
                         </DecodePageRoute>
                       )}
                     />
