@@ -72,7 +72,6 @@ function renderReactApp() {
   reactRoot = createRoot(rootElement);
 
   // Set up auth interceptor BEFORE rendering (so it's ready for API calls)
-  console.log('[JWT Auth] Setting up auth interceptor before rendering');
   const interceptorCleanup = setupAuthInterceptor();
 
   reactRoot.render(
@@ -252,42 +251,16 @@ const jwtAuthEnabled = process.env.JWT_AUTH_ENABLED === 'true';
 // 2. (We have a test token OR JWT auth is enabled - meaning we'll use JWT)
 const shouldRequireAuth = !isInIframe || (isInIframe && !hasTestToken && !jwtAuthEnabled);
 
-console.log('[JWT Auth] Initialization auth strategy', {
-  isInIframe,
-  hasTestToken,
-  jwtAuthEnabled,
-  willUseJWT: isInIframe && (hasTestToken || jwtAuthEnabled),
-  shouldRequireAuth,
-  strategy: shouldRequireAuth
-    ? 'cookie-based (require authenticated user)'
-    : 'JWT (allow unauthenticated, will use JWT token)',
-});
 
 // Set up message listener IMMEDIATELY to catch JWT tokens before React loads
 if (isInIframe) {
   const earlyMessageHandler = (event) => {
-    if (event.data?.type === 'auth.jwt.token') {
-      console.warn('[JWT Auth] 🚨 EARLY LISTENER: JWT TOKEN MESSAGE RECEIVED in index.jsx!', {
-        origin: event.origin,
-        type: event.data?.type,
-        hasToken: !!event.data?.edx_jwt_token,
-        tokenLength: event.data?.edx_jwt_token?.length || 0,
-        timestamp: new Date().toISOString(),
-      });
+    if (event.data?.type === 'auth.jwt.token' && event.data?.edx_jwt_token) {
       // Store token temporarily so useJWTToken hook can pick it up
-      if (event.data?.edx_jwt_token) {
-        window.__EARLY_JWT_TOKEN__ = event.data.edx_jwt_token;
-        console.log('[JWT Auth] Stored early JWT token in window.__EARLY_JWT_TOKEN__', {
-          tokenLength: event.data.edx_jwt_token.length,
-          timestamp: new Date().toISOString(),
-        });
-      }
+      window.__EARLY_JWT_TOKEN__ = event.data.edx_jwt_token;
     }
   };
   window.addEventListener('message', earlyMessageHandler);
-  console.log('[JWT Auth] ✅ Early message listener registered in index.jsx (before React)', {
-    timestamp: new Date().toISOString(),
-  });
 }
 
 // Send ready message to parent when MFE initializes in iframe
@@ -297,21 +270,10 @@ if (isInIframe && window.parent && window.parent !== window) {
     const readyMessage = {
       type: 'auth.jwt.ready',
     };
-    console.log('[JWT Auth] Sending ready message to parent during initialization', {
-      message: readyMessage,
-      hasTestToken,
-      jwtAuthEnabled,
-      timestamp: new Date().toISOString(),
-    });
     window.parent.postMessage(readyMessage, '*');
-    console.log('[JWT Auth] ✅ Ready message sent to parent during initialization', {
-      timestamp: new Date().toISOString(),
-    });
   } catch (error) {
-    console.error('[JWT Auth] ❌ Error sending ready message during initialization', {
+    console.error('[JWT Auth] Error sending ready message during initialization', {
       error: error.message,
-      errorStack: error.stack,
-      timestamp: new Date().toISOString(),
     });
   }
 }
