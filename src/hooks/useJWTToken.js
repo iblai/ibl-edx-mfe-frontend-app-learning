@@ -27,6 +27,18 @@ export function useJWTToken() {
   const config = getConfig();
   const testToken = config?.JWT_TEST_TOKEN || process.env.JWT_TEST_TOKEN || null;
 
+  // Check for early token stored by index.jsx listener (before React loaded)
+  const earlyToken = window.__EARLY_JWT_TOKEN__ || null;
+  if (earlyToken) {
+    console.log('[JWT Auth] Found early JWT token from index.jsx listener', {
+      tokenLength: earlyToken.length,
+      tokenPreview: earlyToken.substring(0, 30) + '...',
+      timestamp: new Date().toISOString(),
+    });
+    // Clear it so it's only used once
+    delete window.__EARLY_JWT_TOKEN__;
+  }
+
   // Log test token presence - log full token for verification in test mode
   if (testToken) {
     const tokenPreview = testToken.substring(0, 50) + '...';
@@ -52,8 +64,10 @@ export function useJWTToken() {
     });
   }
 
-  const [token, setToken] = useState(testToken); // Initialize with test token if available
-  const [isLoading, setIsLoading] = useState(!testToken); // If test token exists, not loading
+  // Initialize with test token, early token, or null
+  const initialToken = testToken || earlyToken || null;
+  const [token, setToken] = useState(initialToken); // Initialize with test token or early token if available
+  const [isLoading, setIsLoading] = useState(!initialToken); // If token exists, not loading
   const [error, setError] = useState(null);
   const expiryCheckIntervalRef = useRef(null);
   const refreshRequestedRef = useRef(false);
@@ -153,15 +167,27 @@ export function useJWTToken() {
   const receiveMessage = useCallback((event) => {
     try {
       // Force console output for iframe debugging - log ALL messages first
-      console.log('[JWT Auth] Received postMessage (ALL MESSAGES)', {
+      // Use multiple console methods to ensure visibility
+      const isJWTMessage = event.data?.type === 'auth.jwt.token';
+      console.log('[JWT Auth] 📨 Received postMessage (ALL MESSAGES)', {
         origin: event.origin,
         type: event.data?.type,
         hasData: !!event.data,
         dataKeys: event.data ? Object.keys(event.data) : [],
         fullData: event.data,
         source: event.source,
+        isJWTMessage,
         timestamp: new Date().toISOString(),
       });
+      // Also log as warning for JWT messages to make them more visible
+      if (isJWTMessage) {
+        console.warn('[JWT Auth] 🎯 JWT TOKEN MESSAGE RECEIVED!', {
+          origin: event.origin,
+          hasToken: !!event.data?.edx_jwt_token,
+          tokenLength: event.data?.edx_jwt_token?.length || 0,
+          timestamp: new Date().toISOString(),
+        });
+      }
       logInfo('[JWT Auth] Received postMessage', { origin: event.origin, type: event.data?.type });
 
       // Validate message origin for security
@@ -364,23 +390,38 @@ export function useJWTToken() {
   useEventListener('message', receiveMessage);
 
   // Add a global message listener for debugging - logs ALL messages before filtering
+  // Set this up immediately, not in useEffect, to catch early messages
   useEffect(() => {
     const globalMessageHandler = (event) => {
-      // Only log messages that might be JWT-related or from parent
-      if (event.data?.type === 'auth.jwt.token' || event.origin) {
-        console.log('[JWT Auth] Global message listener caught postMessage', {
+      // Log ALL messages, especially JWT token messages
+      const isJWTMessage = event.data?.type === 'auth.jwt.token';
+      if (isJWTMessage || event.origin) {
+        console.log('[JWT Auth] 🔔 Global message listener caught postMessage', {
           origin: event.origin,
           type: event.data?.type,
           hasData: !!event.data,
+          dataKeys: event.data ? Object.keys(event.data) : [],
+          fullData: event.data,
           source: event.source,
           isFromParent: event.source === window.parent,
+          isJWTMessage,
           timestamp: new Date().toISOString(),
         });
+        // Make JWT messages extra visible
+        if (isJWTMessage) {
+          console.warn('[JWT Auth] 🎯 GLOBAL LISTENER: JWT TOKEN MESSAGE!', {
+            origin: event.origin,
+            hasToken: !!event.data?.edx_jwt_token,
+            tokenLength: event.data?.edx_jwt_token?.length || 0,
+            timestamp: new Date().toISOString(),
+          });
+        }
       }
     };
 
+    // Add listener immediately
     window.addEventListener('message', globalMessageHandler);
-    console.log('[JWT Auth] Global message listener registered', {
+    console.log('[JWT Auth] ✅ Global message listener registered (will catch ALL messages)', {
       timestamp: new Date().toISOString(),
     });
 
