@@ -102,10 +102,7 @@ export default analyticsProxy;
       };
     }
 
-    // Log that shim is loaded (only once)
-    if (!window.__ANALYTICS_SHIM_LOADED__) {
-      console.log('[JWT Auth] Analytics shim loaded - sendTrackEvent, sendTrackingLogEvent, and sendPageEvent available');
-      window.__ANALYTICS_SHIM_LOADED__ = true;
-    }
+    // Mark shim as loaded (silent)
+    window.__ANALYTICS_SHIM_LOADED__ = true;
   }
 

@@ -15,10 +15,6 @@ const ProgressTab = () => {
   const courseId = useContextId();
   const progressData = useModel('progress', courseId);
 
-  // Log progress data for debugging
-  console.log('[JWT Auth] ProgressTab - progressData:', progressData);
-  console.log('[JWT Auth] ProgressTab - courseId:', courseId);
-
   // Safely extract disableProgressGraph with fallback
   const disableProgressGraph = progressData?.disableProgressGraph ?? false;
 
@@ -35,7 +31,6 @@ const ProgressTab = () => {
 
   // If progress data is not available, show loading state
   if (!progressData) {
-    console.warn('[JWT Auth] ProgressTab - progressData is not available, showing loading state');
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
         <div style={{ fontSize: '18px', color: '#666' }}>Loading progress data...</div>
@@ -65,9 +60,6 @@ const ProgressTab = () => {
       </>
     );
   } catch (error) {
-    console.error('[JWT Auth] ProgressTab - Rendering error:', error);
-    console.error('[JWT Auth] ProgressTab - Error stack:', error.stack);
-    console.error('[JWT Auth] ProgressTab - Progress data:', progressData);
     throw error; // Re-throw to let ErrorBoundary handle it
   }
 };
