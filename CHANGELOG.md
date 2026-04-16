@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased] - 2026-04-16
+
+### Added
+- **Progress tab "View in Studio" link now gated by `MFE_CONFIG.ENABLE_PROGRESS_TAB_STUDIO_LINK`** — the admin-only Studio link in `src/course-home/progress-tab/ProgressHeader.jsx` previously rendered for any user whose auth payload carried `administrator: true`. It now also requires the deployment flag `ENABLE_PROGRESS_TAB_STUDIO_LINK` (boolean `true` or string `'true'`) to be set via `MFE_CONFIG` / `/api/mfe_config/v1`. Default is off, so the button stays hidden until a deployment opts in. Paired with the `iblai-cli-ops` 5.7.0 tutor plugin change that emits this flag from `IBL_EDX.MFE_CONFIG.ENABLE_PROGRESS_TAB_STUDIO_LINK`.
+
 ## [Unreleased] - 2026-02-02
 
 ### Fixed
