@@ -1,3 +1,4 @@
+import { getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import { Button } from '@openedx/paragon';
@@ -35,10 +36,13 @@ const ProgressHeader = () => {
     ? intl.formatMessage(messages.progressHeaderForTargetUser, { username })
     : intl.formatMessage(messages.progressHeader);
 
+  const studioLinkFlag = getConfig().ENABLE_PROGRESS_TAB_STUDIO_LINK;
+  const showStudioLink = studioLinkFlag === true || studioLinkFlag === 'true';
+
   return (
     <div className="row w-100 m-0 mt-3 mb-4 justify-content-between">
       <h1>{pageTitle}</h1>
-      {administrator && studioUrl && (
+      {showStudioLink && administrator && studioUrl && (
       <Button variant="outline-primary" size="sm" className="align-self-center" href={studioUrl}>
         {intl.formatMessage(messages.studioLink)}
       </Button>
